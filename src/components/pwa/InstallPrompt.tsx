@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XMarkIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { Button } from '../ui/Button';
-import { pwa } from '../../utils/loggers';
+import { logger } from '../../utils/logger';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -66,15 +66,15 @@ export const InstallPrompt: React.FC = () => {
       const { outcome } = await deferredPrompt.userChoice;
       
       if (outcome === 'accepted') {
-        pwa.installAccepted();
+        logger.info('PWA install accepted');
       } else {
-        pwa.installRejected();
+        logger.info('PWA install rejected');
       }
 
       setDeferredPrompt(null);
       setShowPrompt(false);
     } catch (error) {
-      pwa.serviceWorkerError(error as Error);
+      logger.error('PWA install error', error as Error);
     }
   };
 

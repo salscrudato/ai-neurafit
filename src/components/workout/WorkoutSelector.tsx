@@ -10,7 +10,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { Button } from '../ui/Button';
 import { WorkoutGenerationModal } from './WorkoutGenerationModal';
-import { useUserStore } from '../../store/userStore';
+import { useAuthStore } from '../../store/authStore';
 import type { WorkoutPlan } from '../../types';
 
 interface WorkoutSelectorProps {
@@ -22,7 +22,7 @@ export const WorkoutSelector: React.FC<WorkoutSelectorProps> = ({
   currentWorkout,
   onStartWorkout
 }) => {
-  const { profile } = useUserStore();
+  const { profile } = useAuthStore();
   const [showGenerationModal, setShowGenerationModal] = useState(false);
 
   if (!currentWorkout) {

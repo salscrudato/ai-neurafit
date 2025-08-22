@@ -35,7 +35,6 @@ import { PageContainer } from '../components/ui/Container';
 import { WorkoutGenerationModal } from '../components/workout/WorkoutGenerationModal';
 
 import { useAuthStore } from '../store/authStore';
-import { useUserStore } from '../store/userStore';
 import { useWorkoutStore } from '../store/workoutStore';
 import { UserProfileService } from '../services/userProfileService';
 
@@ -133,8 +132,7 @@ export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const reduceMotion = useReducedMotion();
 
-  const { user } = useAuthStore();
-  const { profile, setProfile } = useUserStore();
+  const { user, profile, setProfile } = useAuthStore();
   const { workoutHistory } = useWorkoutStore();
 
   const [showWorkoutModal, setShowWorkoutModal] = useState(false);
@@ -166,7 +164,6 @@ export const DashboardPage: React.FC = () => {
   const {
     completedWorkouts,
     totalMinutes,
-    totalCalories,
     currentStreak,
     thisWeekWorkouts,
     weeklyGoal,

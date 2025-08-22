@@ -13,13 +13,7 @@ import { InstallPrompt } from './components/pwa/InstallPrompt';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { PageSuspenseFallback } from './components/ui/SuspenseFallback';
 import { initOfflineStorage } from './utils/offlineStorage';
-import { performanceMonitor } from './utils/performance';
-import {
-  useMemoryMonitoring,
-  useCoreWebVitals,
-  usePerformanceBudget,
-} from './hooks/usePerformance';
-import { navigation, performance as perfLogger } from './utils/loggers';
+import { logger } from './utils/logger';
 import { Button } from './components/ui/Button';
 
 // Lazy load pages for better performance and code splitting
@@ -51,10 +45,7 @@ const ProfilePage = lazy(() =>
   import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })),
 );
 
-// Development-only pages
-const LoggingTestPage = lazy(() =>
-  import('./pages/LoggingTestPage').then((m) => ({ default: m.LoggingTestPage })),
-);
+
 const Layout = lazy(() =>
   import('./components/layout/Layout').then((m) => ({ default: m.Layout })),
 );
@@ -113,8 +104,8 @@ function RouteAnnouncer() {
     const pageName = names[pathname] ?? 'page';
     setMessage(`Navigated to ${pageName}`);
 
-    // Log navigation using centralized logger
-    navigation.routeChange(previousPath, pathname, pageName);
+    // Log navigation using simple logger
+    logger.debug('Route changed', { from: previousPath, to: pathname, page: pageName });
     setPreviousPath(pathname);
   }, [pathname, previousPath]);
 
@@ -210,17 +201,7 @@ function AppShell() {
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-            {/* Development-only routes */}
-            {import.meta.env.DEV && (
-              <Route
-                path="/dev/logging"
-                element={
-                  <Suspense fallback={<PageSuspenseFallback message="Loading test page..." />}>
-                    <LoggingTestPage />
-                  </Suspense>
-                }
-              />
-            )}
+
 
             {/* Protected routes */}
             <Route
@@ -289,37 +270,12 @@ function AppShell() {
 }
 
 function App() {
-  // Performance monitoring hooks
-  useMemoryMonitoring();
-  useCoreWebVitals();
-  usePerformanceBudget({
-    'page-load-time': 3000, // 3 seconds
-    'largest-contentful-paint': 2500, // 2.5 seconds
-    'first-input-delay': 100, // 100ms
-    'cumulative-layout-shift': 0.1, // 0.1 CLS score
-  });
-
   useEffect(() => {
     // Initialize offline storage
     initOfflineStorage();
 
-    // Start performance monitoring
-    const initTime = performance.now();
-    performanceMonitor.recordMetric('app-initialization', initTime);
-    perfLogger.metric('app-initialization', initTime);
-
-    // Log performance metrics in development
-    if (import.meta.env.DEV) {
-      const id = window.setTimeout(() => {
-        const metrics = performanceMonitor.getMetrics();
-        perfLogger.bundleAnalysis(
-          metrics.filter(m => m.name.includes('script')).length,
-          metrics.filter(m => m.name.includes('style')).length,
-          metrics.reduce((sum, m) => sum + (m.value || 0), 0)
-        );
-      }, 5000);
-      return () => window.clearTimeout(id);
-    }
+    // Simple app initialization logging
+    logger.info('App initialized');
   }, []);
 
   return (

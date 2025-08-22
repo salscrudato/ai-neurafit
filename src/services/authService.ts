@@ -10,12 +10,12 @@ import {
   sendPasswordResetEmail,
   type User as FirebaseUser
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { getRecommendedAuthMethod, isPopupBlocked } from '../utils/authUtils';
 import type { User, UserProfile } from '../types';
 
-import { auth as authLogger } from '../utils/loggers';
+import { logger } from '../utils/logger';
 
 export interface SignUpData {
   email: string;
@@ -55,16 +55,14 @@ export class AuthService {
   }
 
   static async signIn({ email, password }: SignInData): Promise<User> {
-    authLogger.signInAttempt(email, 'email');
-
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
 
-      authLogger.signInSuccess(firebaseUser.uid, firebaseUser.email!, 'email');
+      logger.auth.login(firebaseUser.uid);
       return this.mapFirebaseUser(firebaseUser);
     } catch (error: any) {
-      authLogger.signInFailure(email, error, 'email');
+      logger.auth.error('Sign in failed', error as Error);
       throw new Error(this.getErrorMessage(error.code));
     }
   }
@@ -105,13 +103,13 @@ export class AuthService {
       }
 
       const firebaseUser = userCredential.user;
-      authLogger.signInSuccess(firebaseUser.uid, firebaseUser.email!, 'google');
+      logger.auth.login(firebaseUser.uid);
 
       // Let the Firebase Function handle user document creation
       // Just return the mapped user data
       return this.mapFirebaseUser(firebaseUser);
     } catch (error: any) {
-      authLogger.signInFailure('', error, 'google');
+      logger.auth.error('Google sign in failed', error as Error);
       throw new Error(this.getErrorMessage(error.code));
     }
   }
@@ -125,13 +123,13 @@ export class AuthService {
       }
 
       const firebaseUser = result.user;
-      authLogger.signInSuccess(firebaseUser.uid, firebaseUser.email!, 'google');
+      logger.auth.login(firebaseUser.uid);
 
       // Let the Firebase Function handle user document creation
       // Just return the mapped user data
       return this.mapFirebaseUser(firebaseUser);
     } catch (error: any) {
-      authLogger.error('Error processing redirect result', error);
+      logger.auth.error('Error processing redirect result', error as Error);
       throw new Error(this.getErrorMessage(error.code));
     }
   }
@@ -148,7 +146,7 @@ export class AuthService {
     try {
       await sendPasswordResetEmail(auth, email);
     } catch (error: any) {
-      authLogger.error('Failed to send password reset email', error, { email });
+      logger.auth.error('Failed to send password reset email', error as Error);
       throw new Error(this.getErrorMessage(error.code));
     }
   }

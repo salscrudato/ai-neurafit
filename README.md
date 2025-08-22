@@ -62,11 +62,13 @@ npm run deploy          # Build and deploy to Firebase
 ## 🔧 Technology Stack
 
 ### Frontend
-- **React 18** - UI framework
-- **Vite** - Build tool and dev server
-- **TypeScript** - Type safety
-- **Tailwind CSS** - Styling
-- **Framer Motion** - Animations
+- **React 19** - UI framework with modern features
+- **Vite** - Fast build tool and dev server
+- **TypeScript** - Type safety and better DX
+- **Tailwind CSS** - Utility-first styling
+- **Framer Motion** - Smooth animations
+- **Zustand** - Lightweight state management
+- **React Query** - Server state management
 
 ### Backend
 - **Firebase Functions** - Serverless backend
@@ -74,13 +76,20 @@ npm run deploy          # Build and deploy to Firebase
 - **Firebase Auth** - Authentication
 - **OpenAI GPT-4** - AI workout generation
 
+### Architecture Highlights
+- **Simplified Logging** - Lightweight logging system focused on essentials
+- **Streamlined Components** - Clean component architecture without over-engineering
+- **Optimized Performance** - Essential performance monitoring only
+- **Mobile-First Design** - Responsive design optimized for mobile devices
+
 ## 🎯 Key Features
 
 - **AI Workout Generation** - Personalized workouts using GPT-4
 - **Interactive Workout Sessions** - Real-time timers and progress tracking
 - **User Authentication** - Email/password and Google sign-in
-- **Progress Analytics** - Comprehensive workout history and metrics
+- **Workout History** - Track your fitness journey
 - **PWA Support** - Install as native app, offline functionality
+- **Mobile Optimized** - Designed for mobile-first experience
 
 ## �� Troubleshooting
 

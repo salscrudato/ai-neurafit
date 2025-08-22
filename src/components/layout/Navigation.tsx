@@ -8,8 +8,6 @@ import {
   ClockIcon,
   UserIcon,
   ArrowRightOnRectangleIcon,
-  ChartBarIcon,
-  TrophyIcon,
   Cog6ToothIcon,
   BellIcon,
 } from '@heroicons/react/24/outline';
@@ -18,8 +16,6 @@ import {
   PlayIcon as PlayIconSolid,
   ClockIcon as ClockIconSolid,
   UserIcon as UserIconSolid,
-  ChartBarIcon as ChartBarIconSolid,
-  TrophyIcon as TrophyIconSolid,
 } from '@heroicons/react/24/solid';
 import { auth } from '../../lib/firebase';
 import { useAuthStore } from '../../store/authStore';
@@ -28,8 +24,8 @@ import { Badge } from '../ui/Badge';
 type NavItem = {
   name: string;
   href: string;
-  icon: (props: React.ComponentProps<'svg'>) => JSX.Element;
-  iconSolid: (props: React.ComponentProps<'svg'>) => JSX.Element;
+  icon: React.ComponentType<React.ComponentProps<'svg'>>;
+  iconSolid: React.ComponentType<React.ComponentProps<'svg'>>;
   description: string;
   color:
     | 'primary'
@@ -60,28 +56,12 @@ const navigationItems: NavItem[] = [
     badge: 'New',
   },
   {
-    name: 'Progress',
-    href: '/app/progress',
-    icon: ChartBarIcon,
-    iconSolid: ChartBarIconSolid,
-    description: 'Track your gains',
-    color: 'success',
-  },
-  {
     name: 'History',
     href: '/app/history',
     icon: ClockIcon,
     iconSolid: ClockIconSolid,
     description: 'Past workouts',
     color: 'secondary',
-  },
-  {
-    name: 'Achievements',
-    href: '/app/achievements',
-    icon: TrophyIcon,
-    iconSolid: TrophyIconSolid,
-    description: 'Your milestones',
-    color: 'achievement',
   },
   {
     name: 'Profile',
@@ -100,9 +80,6 @@ const prefetchRoute = (to: string) => {
   else if (to.startsWith('/app/history')) import('../../pages/HistoryPage').catch(() => {});
   else if (to.startsWith('/app/profile')) import('../../pages/ProfilePage').catch(() => {});
   else if (to === '/app') import('../../pages/DashboardPage').catch(() => {});
-  else if (to.startsWith('/app/progress')) import('../../pages/ProgressPage').catch(() => {});
-  else if (to.startsWith('/app/achievements')) import('../../pages/AchievementsPage').catch(() => {});
-  else if (to.startsWith('/app/settings')) import('../../pages/SettingsPage').catch(() => {});
 };
 
 export const Navigation: React.FC = () => {

@@ -289,9 +289,7 @@ export const initOfflineStorage = async (): Promise<void> => {
   try {
     await offlineStorage.init();
   } catch (error) {
-    // Import logger dynamically to avoid circular dependencies
-    import('./loggers').then(({ sync }) => {
-      sync.syncError(error as Error);
-    });
+    const { logger } = await import('./logger');
+    logger.error('Offline storage initialization failed', error as Error);
   }
 };

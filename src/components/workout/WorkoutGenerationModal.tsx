@@ -19,7 +19,7 @@ import { WorkoutService } from '../../services/workoutService';
 import { useWorkoutStore } from '../../store/workoutStore';
 import { useAuthStore } from '../../store/authStore';
 
-import type { UserProfile, WorkoutType, WorkoutGenerationRequest } from '../../types';
+import type { UserProfile, WorkoutType, WorkoutGenerationRequest, Equipment } from '../../types';
 
 /* ----------------------------- Constants / UI ---------------------------- */
 
@@ -98,7 +98,7 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
   const [intensity, setIntensity] = useState<'low' | 'moderate' | 'high'>('moderate');
   const [focusAreas, setFocusAreas] = useState<string[]>(['full_body']);
   const [duration, setDuration] = useState<number>(userProfile?.timeCommitment?.minutesPerSession ?? 20);
-  const [equipment, setEquipment] = useState<string[]>(userProfile?.availableEquipment ?? []);
+  const [equipment, setEquipment] = useState<Equipment[]>(userProfile?.availableEquipment ?? []);
   const [bodyweightOnly, setBodyweightOnly] = useState<boolean>(false);
 
   const [generating, setGenerating] = useState(false);
@@ -117,7 +117,7 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
     }
   }, [userProfile, isOpen]);
 
-  const toggleArrayValue = (arr: string[], value: string): string[] =>
+  const toggleArrayValue = <T,>(arr: T[], value: T): T[] =>
     arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value];
 
   const handleClose = () => {

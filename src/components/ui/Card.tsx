@@ -1,5 +1,5 @@
 // src/components/ui/Card.tsx
-import React, { KeyboardEvent, useId } from 'react';
+import React, { type KeyboardEvent, useId } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 
 interface CardProps {

@@ -1,4 +1,4 @@
-import React, { forwardRef, ReactNode, ReactElement } from 'react';
+import React, { forwardRef, type ReactNode, type ReactElement } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { LoadingSpinner } from './LoadingSpinner';
 

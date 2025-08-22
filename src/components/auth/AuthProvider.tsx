@@ -4,7 +4,7 @@ import { auth } from '../../lib/firebase';
 import { useAuthStore } from '../../store/authStore';
 import { AuthService } from '../../services/authService';
 import type { User } from '../../types';
-import { auth as authLogger } from '../../utils/loggers';
+import { logger } from '../../utils/logger';
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -18,7 +18,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     // Skip if already initialized (handles StrictMode double mounting)
     if (isInitialized.current) {
-      authLogger.authStateChange(null, false);
       return;
     }
 
@@ -28,7 +27,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Check if user is already signed in
       const currentUser = auth.currentUser;
       if (currentUser) {
-        authLogger.authStateChange(currentUser.uid, true);
 
         const user: User = {
           id: currentUser.uid,
@@ -58,7 +56,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             };
             setUser(updatedUser);
           } else {
-            authLogger.info('🚫 User signed out');
             setUser(null);
           }
         });
@@ -72,14 +69,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const redirectUser = await AuthService.handleRedirectResult();
 
         if (redirectUser && isMounted) {
-          authLogger.signInSuccess(redirectUser.id, redirectUser.email, 'google');
+          logger.auth.login(redirectUser.id);
           setUser(redirectUser);
           setLoading(false);
           isInitialized.current = true;
           return;
         }
       } catch (error) {
-        authLogger.error('Error handling redirect result', error as Error);
+        logger.auth.error('Error handling redirect result', error as Error);
       }
 
       // Set up the auth state listener
@@ -89,7 +86,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
 
         if (firebaseUser) {
-          authLogger.authStateChange(firebaseUser.uid, true);
 
           const user: User = {
             id: firebaseUser.uid,
@@ -101,7 +97,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           };
           setUser(user);
         } else {
-          authLogger.authStateChange(null, false);
           setUser(null);
         }
 
@@ -117,7 +112,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     initializeAuth().catch((error) => {
-      authLogger.error('Auth initialization failed', error as Error);
+      logger.auth.error('Auth initialization failed', error as Error);
     });
 
     return () => {

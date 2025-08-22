@@ -8,9 +8,7 @@ import {
   FunnelIcon
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
-import { WorkoutHistoryChart } from '../components/analytics/WorkoutHistoryChart';
-import { ProgressMetrics } from '../components/analytics/ProgressMetrics';
-import { WorkoutHistoryList } from '../components/analytics/WorkoutHistoryList';
+// Simplified history page without complex analytics
 import { useWorkoutStore } from '../store/workoutStore';
 import { useAuthStore } from '../store/authStore';
 import { WorkoutService } from '../services/workoutService';
@@ -196,20 +194,18 @@ export const HistoryPage: React.FC = () => {
 
       {/* Charts and Analytics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        {/* Simplified analytics - removed complex charts for cleaner architecture */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
+          className="bg-white rounded-lg shadow-sm p-6"
         >
-          <WorkoutHistoryChart workouts={workoutHistory} />
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-        >
-          <ProgressMetrics workouts={workoutHistory} />
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Workout Insights</h3>
+          <p className="text-gray-600">
+            Detailed analytics and charts will be available in a future update.
+            For now, you can view your basic workout statistics above and browse your workout history below.
+          </p>
         </motion.div>
       </div>
 
@@ -239,7 +235,56 @@ export const HistoryPage: React.FC = () => {
           </div>
         </div>
 
-        <WorkoutHistoryList workouts={filteredWorkouts} />
+        {/* Simple workout list */}
+        <div className="space-y-4">
+          {filteredWorkouts.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500">No workouts found for the selected period.</p>
+            </div>
+          ) : (
+            filteredWorkouts.map((workout) => (
+              <div key={workout.id} className="bg-white rounded-lg shadow-sm p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold text-gray-900">
+                    {workout.workoutPlan?.name || 'Workout'}
+                  </h4>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    workout.status === 'completed'
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {workout.status}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 mb-2">
+                  {workout.startTime.toLocaleDateString()} at {workout.startTime.toLocaleTimeString()}
+                </p>
+                {workout.endTime && (
+                  <p className="text-sm text-gray-600">
+                    Duration: {formatTime(Math.round((workout.endTime.getTime() - workout.startTime.getTime()) / (1000 * 60)))}
+                  </p>
+                )}
+                {workout.rating && (
+                  <div className="flex items-center mt-2">
+                    <span className="text-sm text-gray-600 mr-2">Rating:</span>
+                    <div className="flex">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <span
+                          key={star}
+                          className={`text-sm ${
+                            star <= workout.rating! ? 'text-yellow-400' : 'text-gray-300'
+                          }`}
+                        >
+                          ★
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
       </motion.div>
     </div>
   );

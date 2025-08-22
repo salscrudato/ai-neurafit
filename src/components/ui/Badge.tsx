@@ -1,4 +1,4 @@
-import React, { forwardRef, ReactElement, ReactNode } from 'react';
+import React, { forwardRef, type ReactElement, type ReactNode } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 
 /* ===== Types ===== */
@@ -145,7 +145,7 @@ export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(function Badge(
   ) : null;
 
   const Icon = icon
-    ? React.cloneElement(icon as ReactElement, { 'aria-hidden': true, className: iconClass })
+    ? React.cloneElement(icon as ReactElement, { 'aria-hidden': 'true', className: iconClass })
     : null;
 
   if (animate && !shouldReduceMotion) {
@@ -158,7 +158,6 @@ export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(function Badge(
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.97 }}
         transition={{ type: 'spring', stiffness: 320, damping: 24, mass: 0.6 }}
-        {...rest}
       >
         {srLabel && <span className="sr-only">{srLabel}</span>}
         {iconPosition === 'left' && Icon}

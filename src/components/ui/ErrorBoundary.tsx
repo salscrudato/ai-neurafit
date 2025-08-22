@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { Button } from './Button';
 import { Card } from './Card';
-import { errorBoundary } from '../../utils/loggers';
+import { logger } from '../../utils/logger';
 
 interface Props {
   children: ReactNode;
@@ -31,12 +31,15 @@ export class ErrorBoundary extends Component<Props, State> {
     this.setState({ error, errorInfo });
     this.props.onError?.(error, errorInfo);
 
-    // Log error using centralized logging
-    errorBoundary.errorCaught(error, errorInfo, errorInfo.componentStack);
+    // Log error using simple logging
+    logger.error('Error boundary caught error', error, {
+      componentStack: errorInfo.componentStack,
+      errorBoundary: true,
+    });
   }
 
   handleRetry = () => {
-    errorBoundary.retry();
+    logger.info('Error boundary retry attempted');
     this.setState({ hasError: false, error: undefined, errorInfo: undefined });
   };
 

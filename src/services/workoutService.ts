@@ -44,10 +44,8 @@ export class WorkoutService {
       
       return result.data.workoutPlan;
     } catch (error: any) {
-      // Import logger dynamically to avoid circular dependencies
-      import('../utils/loggers').then(({ workout }) => {
-        workout.generateFailure('', error);
-      });
+      const { logger } = await import('../utils/logger');
+      logger.workout.error('Workout generation failed', error as Error);
       throw new Error(error.message || 'Failed to generate workout');
     }
   }
@@ -98,16 +96,15 @@ export class WorkoutService {
 
   // Complete a workout session
   static async completeWorkoutSession(
-    sessionId: string, 
-    completedExercises: any[], 
-    rating?: number, 
-    feedback?: string
+    sessionId: string,
+    _completedExercises: any[],
+    _rating?: number,
+    _feedback?: string
   ): Promise<void> {
     // This would update the workout session in Firestore
     // Implementation would go here
-    import('../utils/loggers').then(({ workout }) => {
-      workout.sessionComplete('', sessionId, 0, rating);
-    });
+    const { logger } = await import('../utils/logger');
+    logger.workout.completed('current_user', sessionId);
   }
 
   // Get workout history

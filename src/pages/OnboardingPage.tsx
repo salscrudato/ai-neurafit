@@ -7,7 +7,7 @@ import { OnboardingStep3 } from '../components/onboarding/OnboardingStep3';
 import { OnboardingStep4 } from '../components/onboarding/OnboardingStep4';
 import { OnboardingStep5 } from '../components/onboarding/OnboardingStep5';
 import { UserProfileService } from '../services/userProfileService';
-import { useUserStore } from '../store/userStore';
+import { useAuthStore } from '../store/authStore';
 import type { FitnessLevel, FitnessGoal, Equipment, WorkoutType } from '../types';
 
 interface OnboardingData {
@@ -29,7 +29,7 @@ interface OnboardingData {
 
 export const OnboardingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { setOnboardingCompleted, setError, clearError } = useUserStore();
+  const { setOnboardingCompleted, setError, clearError } = useAuthStore();
   const [currentStep, setCurrentStep] = useState(1);
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
     fitnessLevel: null,
