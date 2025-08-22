@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { SparklesIcon } from '@heroicons/react/24/outline';
 import { Button } from '../components/ui/Button';
@@ -12,19 +12,72 @@ type LoadingState = 'email' | 'google' | null;
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
 
+function mapAuthError(err: any): string {
+  const code = err?.code || err?.error?.code || '';
+  switch (code) {
+    case 'auth/invalid-email':
+      return 'Enter a valid email address.';
+    case 'auth/user-disabled':
+      return 'This account has been disabled.';
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+      return 'Email or password is incorrect.';
+    case 'auth/too-many-requests':
+      return 'Too many attempts. Please try again later.';
+    case 'auth/network-request-failed':
+      return 'Network error. Check your connection and try again.';
+    case 'auth/popup-closed-by-user':
+      return 'Sign-in window was closed.';
+    default:
+      return err?.message || 'Unable to sign in. Please try again.';
+  }
+}
+
+// Gentle “did you mean” for common domain typos
+const domainFix: Record<string, string> = {
+  gamil: 'gmail',
+  gmal: 'gmail',
+  hotmial: 'hotmail',
+  outlok: 'outlook',
+  yaho: 'yahoo',
+};
+function suggestEmail(email: string): string | null {
+  const at = email.indexOf('@');
+  if (at < 0) return null;
+  const [local, domain] = [email.slice(0, at), email.slice(at + 1)];
+  const [name, tld = ''] = domain.split('.');
+  if (!name || !tld) return null;
+  const fixed = domainFix[name.toLowerCase()];
+  return fixed && fixed !== name ? `${local}@${fixed}.${tld}` : null;
+}
+
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const reduceMotion = useReducedMotion();
-  const { setError, clearError } = useAuthStore();
+  const { setError, clearError, isOnboarded } = useAuthStore();
 
   const [form, setForm] = useState<LoginForm>({ email: '', password: '' });
   const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({});
   const [capsLock, setCapsLock] = useState(false);
   const [loading, setLoading] = useState<LoadingState>(null);
+  const [emailHint, setEmailHint] = useState<string | null>(null);
 
-  // focus targets on failed validation
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
+
+  // Document title
+  useEffect(() => {
+    document.title = 'Sign in • NeuraFit';
+  }, []);
+
+  // Determine where to go post-login
+  const redirectTarget = useMemo(() => {
+    const r = params.get('redirect');
+    // sanitize: avoid redirecting back to /login to prevent loops
+    if (r && !/^\/login/.test(r)) return r;
+    return '/app';
+  }, [params]);
 
   const setGeneralError = (msg: string) => {
     setErrors((e) => ({ ...e, general: msg }));
@@ -40,15 +93,19 @@ export const LoginPage: React.FC = () => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
 
-    // live validation
     if (name === 'email') {
       setErrors((prev) => ({
         ...prev,
         email: value && !emailPattern.test(value) ? 'Enter a valid email.' : undefined,
         general: undefined,
       }));
+      setEmailHint(suggestEmail(value));
     } else if (name === 'password') {
-      setErrors((prev) => ({ ...prev, password: value ? undefined : 'Password is required.', general: undefined }));
+      setErrors((prev) => ({
+        ...prev,
+        password: value ? undefined : 'Password is required.',
+        general: undefined,
+      }));
     }
 
     if (errors.general) clearAllErrors();
@@ -59,7 +116,6 @@ export const LoginPage: React.FC = () => {
     if (!form.email) next.email = 'Email is required.';
     else if (!emailPattern.test(form.email)) next.email = 'Enter a valid email.';
     if (!form.password) next.password = 'Password is required.';
-
     setErrors(next);
 
     if (next.email) {
@@ -73,6 +129,16 @@ export const LoginPage: React.FC = () => {
     return true;
   };
 
+  const navigatePostAuth = () => {
+    // If a redirect was requested and user is already onboarded, honor it; else guide to onboarding
+    if (isOnboarded) {
+      navigate(redirectTarget, { replace: true });
+    } else {
+      // Keep redirect intent so onboarding can bounce back
+      navigate(`/onboarding?redirect=${encodeURIComponent(redirectTarget)}`, { replace: true });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearAllErrors();
@@ -80,11 +146,10 @@ export const LoginPage: React.FC = () => {
 
     try {
       setLoading('email');
-      await AuthService.signIn(form);
-      navigate('/app');
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unable to sign in. Please try again.';
-      setGeneralError(message);
+      await AuthService.signIn({ email: form.email, password: form.password });
+      navigatePostAuth();
+    } catch (err: any) {
+      setGeneralError(mapAuthError(err));
     } finally {
       setLoading(null);
     }
@@ -95,15 +160,15 @@ export const LoginPage: React.FC = () => {
     try {
       setLoading('google');
       await AuthService.signInWithGoogle();
-      // most providers redirect; navigate is a safety net
-      navigate('/app');
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Google sign-in failed. Please try again.';
-      if (message.toLowerCase().includes('redirecting to google')) {
-        setErrors((e) => ({ ...e, general: 'Redirecting to Google sign‑in…' }));
+      // Most providers use redirect; if popup was used and returns here, navigate now:
+      navigatePostAuth();
+    } catch (err: any) {
+      const message = (err?.message || '').toLowerCase();
+      if (message.includes('redirecting to google')) {
+        setErrors((e) => ({ ...e, general: 'Redirecting to Google sign-in…' }));
         return; // keep loading during redirect
       }
-      setGeneralError(message);
+      setGeneralError(mapAuthError(err));
       setLoading(null);
     }
   };
@@ -113,30 +178,25 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-neutral-50 via-white to-primary-50/20">
-      {/* Decorative background (motion-aware) */}
-      <div className="absolute inset-0" aria-hidden="true">
-        <div className="absolute inset-0 bg-mesh-gradient opacity-20" />
-        <motion.div
-          animate={
-            reduceMotion ? { opacity: 0.12, scale: 1 } : { scale: [1, 1.15, 1], opacity: [0.08, 0.2, 0.08] }
-          }
-          transition={reduceMotion ? { duration: 0 } : { duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-1/4 left-1/4 h-72 w-72 rounded-full bg-gradient-primary blur-3xl"
-        />
-        <motion.div
-          animate={
-            reduceMotion ? { opacity: 0.14, scale: 1 } : { scale: [1.1, 0.92, 1.1], opacity: [0.12, 0.26, 0.12] }
-          }
-          transition={reduceMotion ? { duration: 0 } : { duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-          className="absolute bottom-1/4 right-1/4 h-64 w-64 rounded-full bg-gradient-accent blur-3xl"
-        />
-      </div>
+      {/* Subtle moving gradient accent */}
+      <motion.div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-r from-primary-100 via-cyan-100 to-primary-100 opacity-60 blur-2xl bg-[length:200%_100%]"
+        animate={
+          reduceMotion
+            ? { opacity: 0.4 }
+            : { backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }
+        }
+        transition={
+          reduceMotion ? { duration: 0 } : { duration: 18, repeat: Infinity, ease: 'easeInOut' }
+        }
+      />
 
       <main className="relative z-10 flex min-h-screen items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
+          transition={{ duration: 0.45, ease: 'easeOut' }}
           className="w-full max-w-md space-y-8"
         >
           {/* Brand / Heading */}
@@ -157,7 +217,11 @@ export const LoginPage: React.FC = () => {
           </div>
 
           {/* Auth Card */}
-          <div className="card p-6 sm:p-8">
+          <div className="card p-6 sm:p-8 relative overflow-hidden">
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-0 -top-px h-[3px] bg-gradient-to-r from-primary-400 via-cyan-400 to-primary-400 bg-[length:200%_100%] animate-gradient"
+            />
             {/* General error banner */}
             {!!errors.general && (
               <div
@@ -186,7 +250,13 @@ export const LoginPage: React.FC = () => {
                 error={errors.email}
                 animate
                 data-testid="login-email"
+                aria-describedby={emailHint ? 'email-hint' : undefined}
               />
+              {emailHint && (
+                <p id="email-hint" className="mt-1 text-xs text-neutral-600">
+                  Did you mean <span className="font-medium">{emailHint}</span>?
+                </p>
+              )}
 
               {/* Password */}
               <Input
@@ -200,7 +270,9 @@ export const LoginPage: React.FC = () => {
                 required
                 value={form.password}
                 onChange={onFieldChange}
-                onKeyUp={(e) => setCapsLock((e as React.KeyboardEvent<HTMLInputElement>).getModifierState('CapsLock'))}
+                onKeyUp={(e) =>
+                  setCapsLock((e as React.KeyboardEvent<HTMLInputElement>).getModifierState('CapsLock'))
+                }
                 helperText={capsLock ? 'Caps Lock is on.' : undefined}
                 error={errors.password}
                 showPasswordToggle
@@ -236,9 +308,7 @@ export const LoginPage: React.FC = () => {
                     <div className="w-full border-t border-neutral-200" />
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="bg-white px-2 text-neutral-500">
-                      Or continue with
-                    </span>
+                    <span className="bg-white px-2 text-neutral-500">Or continue with</span>
                   </div>
                 </div>
 
@@ -252,6 +322,7 @@ export const LoginPage: React.FC = () => {
                   className="w-full"
                   size="lg"
                   data-testid="login-google"
+                  aria-label="Continue with Google"
                 >
                   <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />

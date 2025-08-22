@@ -2,79 +2,64 @@
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   safelist: [
-    // Common dynamic utilities used via props/variants
+    // Modern gradient utilities
     "bg-gradient-hero",
     "bg-gradient-primary",
-    "bg-gradient-primary-soft",
-    "bg-gradient-accent",
-    "bg-gradient-secondary",
-    "bg-gradient-brand",
-    "bg-mesh-gradient",
-    "text-gradient",
+    "bg-gradient-energy",
+    "bg-gradient-success",
     "text-gradient-primary",
-    "text-gradient-accent",
-    "text-gradient-secondary",
-    "text-gradient-brand",
+    "text-gradient-energy",
     "shadow-glow-primary",
-    "shadow-glow-accent",
-    "shadow-glow-secondary",
+    "shadow-glow-energy",
+    "shadow-modern",
+    "shadow-elevated",
   ],
   theme: {
     extend: {
       colors: {
-        // Brand palettes
+        // Modern, refined brand palette inspired by Apple Fitness+ and Nike Training Club
         primary: {
-          50: "#f0f4ff",
-          100: "#e0e7ff",
-          200: "#c7d2fe",
-          300: "#a5b4fc",
-          400: "#818cf8",
-          500: "#6366f1",
-          600: "#4f46e5",
-          700: "#4338ca",
-          800: "#3730a3",
-          900: "#312e81",
-          950: "#1e1b4b",
+          50: "#f8fafc",
+          100: "#f1f5f9",
+          200: "#e2e8f0",
+          300: "#cbd5e1",
+          400: "#94a3b8",
+          500: "#64748b",
+          600: "#475569",
+          700: "#334155",
+          800: "#1e293b",
+          900: "#0f172a",
+          950: "#020617",
         },
-        accent: {
-          50: "#ecfeff",
-          100: "#cffafe",
-          200: "#a5f3fc",
-          300: "#67e8f9",
-          400: "#22d3ee",
-          500: "#06b6d4",
-          600: "#0891b2",
-          700: "#0e7490",
-          800: "#155e75",
-          900: "#164e63",
-          950: "#083344",
+        // Energy/Action color - Nike-inspired vibrant orange
+        energy: {
+          50: "#fff7ed",
+          100: "#ffedd5",
+          200: "#fed7aa",
+          300: "#fdba74",
+          400: "#fb923c",
+          500: "#f97316", // Main energy color
+          600: "#ea580c",
+          700: "#c2410c",
+          800: "#9a3412",
+          900: "#7c2d12",
+          950: "#431407",
         },
-        secondary: {
-          50: "#fdf2f8",
-          100: "#fce7f3",
-          200: "#fbcfe8",
-          300: "#f9a8d4",
-          400: "#f472b6",
-          500: "#ec4899",
-          600: "#db2777",
-          700: "#be185d",
-          800: "#9d174d",
-          900: "#831843",
-          950: "#500724",
-        },
+        // Success/Achievement - Apple-inspired green
         success: {
-          50: "#ecfdf5",
-          100: "#d1fae5",
-          200: "#a7f3d0",
-          300: "#6ee7b7",
-          400: "#34d399",
-          500: "#10b981",
-          600: "#059669",
-          700: "#047857",
-          800: "#065f46",
-          900: "#064e3b",
-          950: "#022c22",
+          50: "#f0fdf4",
+          100: "#dcfce7",
+          200: "#bbf7d0",
+          300: "#86efac",
+          400: "#4ade80",
+          500: "#22c55e", // Main success color
+          600: "#16a34a",
+          700: "#15803d",
+          800: "#166534",
+          900: "#14532d",
+          950: "#052e16",
         },
+        // Warning - Refined amber
         warning: {
           50: "#fffbeb",
           100: "#fef3c7",
@@ -88,6 +73,7 @@ export default {
           900: "#78350f",
           950: "#451a03",
         },
+        // Error - Clean red
         error: {
           50: "#fef2f2",
           100: "#fee2e2",
@@ -101,240 +87,179 @@ export default {
           900: "#7f1d1d",
           950: "#450a0a",
         },
+        // Modern neutral palette - Apple-inspired grays
         neutral: {
           0: "#ffffff",
-          50: "#fafbfc",
-          100: "#f1f3f5",
-          200: "#e9ecef",
-          300: "#dee2e6",
-          400: "#ced4da",
-          500: "#adb5bd",
-          600: "#6c757d",
-          700: "#495057",
-          800: "#343a40",
-          900: "#212529",
-          950: "#0d1117",
+          50: "#f8fafc",
+          100: "#f1f5f9",
+          200: "#e2e8f0",
+          300: "#cbd5e1",
+          400: "#94a3b8",
+          500: "#64748b",
+          600: "#475569",
+          700: "#334155",
+          800: "#1e293b",
+          900: "#0f172a",
+          950: "#020617",
           1000: "#000000",
         },
 
-        // Semantic tokens
+        // Semantic design tokens for consistent theming
         background: {
           DEFAULT: "#ffffff",
-          secondary: "#fafbfc",
-          tertiary: "#f1f3f5",
-          inverse: "#0d1117",
+          secondary: "#f8fafc",
+          tertiary: "#f1f5f9",
+          inverse: "#0f172a",
         },
         foreground: {
-          DEFAULT: "#212529",
-          secondary: "#495057",
-          tertiary: "#6c757d",
+          DEFAULT: "#0f172a",
+          secondary: "#334155",
+          tertiary: "#64748b",
           inverse: "#ffffff",
         },
         border: {
-          DEFAULT: "#e9ecef",
-          secondary: "#dee2e6",
-          tertiary: "#ced4da",
-          inverse: "#343a40",
+          DEFAULT: "#e2e8f0",
+          secondary: "#cbd5e1",
+          tertiary: "#94a3b8",
+          inverse: "#334155",
         },
 
 
-
-        // Fitness semantic palettes
+        // Simplified fitness semantic colors - using main palette for consistency
         fitness: {
+          // Cardio = Energy (orange)
           cardio: {
-            50: "#fef2f2",
-            100: "#fee2e2",
-            200: "#fecaca",
-            300: "#fca5a5",
-            400: "#f87171",
-            500: "#ef4444",
-            600: "#dc2626",
-            700: "#b91c1c",
-            800: "#991b1b",
-            900: "#7f1d1d",
-            950: "#450a0a",
-          },
-          strength: {
-            50: "#f0f4ff",
-            100: "#e0e7ff",
-            200: "#c7d2fe",
-            300: "#a5b4fc",
-            400: "#818cf8",
-            500: "#6366f1",
-            600: "#4f46e5",
-            700: "#4338ca",
-            800: "#3730a3",
-            900: "#312e81",
-            950: "#1e1b4b",
-          },
-          flexibility: {
-            50: "#ecfdf5",
-            100: "#d1fae5",
-            200: "#a7f3d0",
-            300: "#6ee7b7",
-            400: "#34d399",
-            500: "#10b981",
-            600: "#059669",
-            700: "#047857",
-            800: "#065f46",
-            900: "#064e3b",
-            950: "#022c22",
-          },
-          recovery: {
-            50: "#fdf2f8",
-            100: "#fce7f3",
-            200: "#fbcfe8",
-            300: "#f9a8d4",
-            400: "#f472b6",
-            500: "#ec4899",
-            600: "#db2777",
-            700: "#be185d",
-            800: "#9d174d",
-            900: "#831843",
-            950: "#500724",
-          },
-          hiit: {
             50: "#fff7ed",
             100: "#ffedd5",
-            200: "#fed7aa",
-            300: "#fdba74",
-            400: "#fb923c",
-            500: "#f97316",
+            500: "#f97316", // Maps to energy.500
             600: "#ea580c",
             700: "#c2410c",
-            800: "#9a3412",
-            900: "#7c2d12",
-            950: "#431407",
           },
-          yoga: {
+          // Strength = Primary (slate)
+          strength: {
+            50: "#f8fafc",
+            100: "#f1f5f9",
+            500: "#64748b", // Maps to primary.500
+            600: "#475569",
+            700: "#334155",
+          },
+          // Recovery = Success (green)
+          recovery: {
             50: "#f0fdf4",
             100: "#dcfce7",
-            200: "#bbf7d0",
-            300: "#86efac",
-            400: "#4ade80",
-            500: "#22c55e",
+            500: "#22c55e", // Maps to success.500
             600: "#16a34a",
             700: "#15803d",
-            800: "#166534",
-            900: "#14532d",
-            950: "#052e16",
-          },
-          pilates: {
-            50: "#faf5ff",
-            100: "#f3e8ff",
-            200: "#e9d5ff",
-            300: "#d8b4fe",
-            400: "#c084fc",
-            500: "#a855f7",
-            600: "#9333ea",
-            700: "#7c3aed",
-            800: "#6b21a8",
-            900: "#581c87",
-            950: "#3b0764",
           },
         },
       },
 
+      // Modern typography stack - Apple/Nike inspired
       fontFamily: {
-        sans: ["Inter", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
-        display: ["Space Grotesk", "Inter", "system-ui", "sans-serif"],
-        mono: ["JetBrains Mono", "SF Mono", "Monaco", "Inconsolata", "Roboto Mono", "monospace"],
-        body: ["Inter", "system-ui", "sans-serif"],
-        heading: ["Space Grotesk", "Inter", "system-ui", "sans-serif"],
+        sans: [
+          "SF Pro Display",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Inter",
+          "system-ui",
+          "Segoe UI",
+          "Roboto",
+          "sans-serif"
+        ],
+        display: [
+          "SF Pro Display",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Inter",
+          "system-ui",
+          "sans-serif"
+        ],
+        body: [
+          "SF Pro Text",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Inter",
+          "system-ui",
+          "sans-serif"
+        ],
+        mono: [
+          "SF Mono",
+          "Monaco",
+          "JetBrains Mono",
+          "Menlo",
+          "Consolas",
+          "monospace"
+        ],
       },
 
+      // Modern, refined gradients inspired by Apple and Nike
       backgroundImage: {
-        // Brand/hero
-        "gradient-primary": "linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)",
-        "gradient-primary-soft": "linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%)",
+        // Primary brand gradients - subtle and sophisticated
+        "gradient-primary": "linear-gradient(135deg, #64748b 0%, #475569 100%)",
+        "gradient-primary-soft": "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
 
-        "gradient-accent": "linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)",
-        "gradient-accent-soft": "linear-gradient(135deg, #ecfeff 0%, #cffafe 100%)",
+        // Energy gradient - Nike-inspired vibrant
+        "gradient-energy": "linear-gradient(135deg, #f97316 0%, #ea580c 100%)",
+        "gradient-energy-soft": "linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)",
 
-        "gradient-secondary": "linear-gradient(135deg, #ec4899 0%, #be185d 100%)",
-        "gradient-secondary-soft": "linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)",
+        // Success gradient - Apple-inspired green
+        "gradient-success": "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
+        "gradient-success-soft": "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
 
-        "gradient-hero": "linear-gradient(135deg, #6366f1 0%, #06b6d4 50%, #ec4899 100%)",
+        // Hero gradient - modern and engaging
+        "gradient-hero": "linear-gradient(135deg, #f97316 0%, #22c55e 50%, #64748b 100%)",
 
-        "gradient-brand": "linear-gradient(135deg, #6366f1 0%, #8b5cf6 25%, #06b6d4 50%, #22d3ee 75%, #ec4899 100%)",
+        // Subtle background gradients
+        "gradient-background": "linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%)",
+        "gradient-background-dark": "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)",
 
-        // Glass
-        "gradient-glass": "linear-gradient(145deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%)",
+        // Modern glass effect - more subtle
+        "gradient-glass": "linear-gradient(145deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)",
+        "gradient-glass-dark": "linear-gradient(145deg, rgba(15, 23, 42, 0.8) 0%, rgba(15, 23, 42, 0.4) 100%)",
 
-        "gradient-glass-colored": "linear-gradient(145deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.05) 100%)",
+        // Simplified fitness gradients
+        "gradient-cardio": "linear-gradient(135deg, #f97316 0%, #ea580c 100%)",
+        "gradient-strength": "linear-gradient(135deg, #64748b 0%, #475569 100%)",
+        "gradient-recovery": "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
 
-        // Backgrounds
-        "gradient-background": "linear-gradient(135deg, #fafbfc 0%, #f0f4ff 50%, #ecfeff 100%)",
-
-
-        // Mesh
-        "mesh-gradient":
-          "radial-gradient(at 40% 20%, hsla(228,100%,74%,1) 0px, transparent 50%), radial-gradient(at 80% 0%, hsla(189,100%,56%,1) 0px, transparent 50%), radial-gradient(at 0% 50%, hsla(355,100%,93%,1) 0px, transparent 50%), radial-gradient(at 80% 50%, hsla(340,100%,76%,1) 0px, transparent 50%), radial-gradient(at 0% 100%, hsla(22,100%,77%,1) 0px, transparent 50%), radial-gradient(at 80% 100%, hsla(242,100%,70%,1) 0px, transparent 50%), radial-gradient(at 0% 0%, hsla(343,100%,76%,1) 0px, transparent 50%)",
-
-
-        // Fitness
-        "gradient-cardio": "linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%)",
-        "gradient-cardio-soft": "linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)",
-        "gradient-strength": "linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #4338ca 100%)",
-        "gradient-strength-soft": "linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%)",
-        "gradient-flexibility": "linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)",
-        "gradient-flexibility-soft": "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)",
-        "gradient-recovery": "linear-gradient(135deg, #ec4899 0%, #db2777 50%, #be185d 100%)",
-        "gradient-recovery-soft": "linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)",
-        "gradient-hiit": "linear-gradient(135deg, #f97316 0%, #ea580c 50%, #c2410c 100%)",
-        "gradient-hiit-soft": "linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)",
-        "gradient-yoga": "linear-gradient(135deg, #22c55e 0%, #16a34a 50%, #15803d 100%)",
-        "gradient-yoga-soft": "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
-        "gradient-pilates": "linear-gradient(135deg, #a855f7 0%, #9333ea 50%, #7c3aed 100%)",
-        "gradient-pilates-soft": "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)",
-
-        // Energy/motivation
-        "gradient-energy": "linear-gradient(135deg, #f97316 0%, #ef4444 25%, #ec4899 50%, #a855f7 75%, #6366f1 100%)",
-        "gradient-power": "linear-gradient(135deg, #dc2626 0%, #ea580c 50%, #f59e0b 100%)",
-        "gradient-zen": "linear-gradient(135deg, #22c55e 0%, #10b981 25%, #06b6d4 50%, #8b5cf6 75%, #a855f7 100%)",
-        "gradient-intensity": "linear-gradient(135deg, #7c2d12 0%, #dc2626 25%, #ea580c 50%, #f59e0b 75%, #eab308 100%)",
-
-        // Utility
-        "gradient-shimmer": "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)",
-
+        // Utility gradients
+        "gradient-shimmer": "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)",
       },
 
+      // Modern typography scale - Apple/Nike inspired with better readability
       fontSize: {
         xs: ["0.75rem", { lineHeight: "1rem", letterSpacing: "0.025em" }],
-        sm: ["0.875rem", { lineHeight: "1.25rem", letterSpacing: "0.025em" }],
-        base: ["1rem", { lineHeight: "1.5rem" }],
-        lg: ["1.125rem", { lineHeight: "1.75rem", letterSpacing: "-0.025em" }],
-        xl: ["1.25rem", { lineHeight: "1.75rem", letterSpacing: "-0.025em" }],
-        "2xl": ["1.5rem", { lineHeight: "2rem", letterSpacing: "-0.025em" }],
+        sm: ["0.875rem", { lineHeight: "1.25rem", letterSpacing: "0.01em" }],
+        base: ["1rem", { lineHeight: "1.5rem", letterSpacing: "0" }],
+        lg: ["1.125rem", { lineHeight: "1.75rem", letterSpacing: "-0.01em" }],
+        xl: ["1.25rem", { lineHeight: "1.75rem", letterSpacing: "-0.015em" }],
+        "2xl": ["1.5rem", { lineHeight: "2rem", letterSpacing: "-0.02em" }],
         "3xl": ["1.875rem", { lineHeight: "2.25rem", letterSpacing: "-0.025em" }],
-        "4xl": ["2.25rem", { lineHeight: "2.5rem", letterSpacing: "-0.025em" }],
-        "5xl": ["3rem", { lineHeight: "1.1", letterSpacing: "-0.025em" }],
-        "6xl": ["3.75rem", { lineHeight: "1.1", letterSpacing: "-0.025em" }],
-        "7xl": ["4.5rem", { lineHeight: "1.1", letterSpacing: "-0.025em" }],
-        "8xl": ["6rem", { lineHeight: "1.1", letterSpacing: "-0.025em" }],
-        "9xl": ["8rem", { lineHeight: "1.1", letterSpacing: "-0.025em" }],
+        "4xl": ["2.25rem", { lineHeight: "2.5rem", letterSpacing: "-0.03em" }],
+        "5xl": ["3rem", { lineHeight: "1.1", letterSpacing: "-0.035em" }],
+        "6xl": ["3.75rem", { lineHeight: "1.1", letterSpacing: "-0.04em" }],
+        "7xl": ["4.5rem", { lineHeight: "1.05", letterSpacing: "-0.045em" }],
+        "8xl": ["6rem", { lineHeight: "1.05", letterSpacing: "-0.05em" }],
+        "9xl": ["8rem", { lineHeight: "1", letterSpacing: "-0.055em" }],
 
-        // Fluid scale used by utilities in styles.css
-        "fluid-xs": ["clamp(0.7rem, 0.66rem + 0.2vw, 0.75rem)", { lineHeight: "1rem" }],
-        "fluid-sm": ["clamp(0.8rem, 0.75rem + 0.25vw, 0.875rem)", { lineHeight: "1.25rem" }],
-        "fluid-base": ["clamp(0.9rem, 0.85rem + 0.25vw, 1rem)", { lineHeight: "1.5rem" }],
-        "fluid-lg": ["clamp(1rem, 0.95rem + 0.25vw, 1.125rem)", { lineHeight: "1.75rem" }],
-        "fluid-xl": ["clamp(1.125rem, 1.05rem + 0.375vw, 1.25rem)", { lineHeight: "1.75rem" }],
-        "fluid-2xl": ["clamp(1.25rem, 1.15rem + 0.5vw, 1.5rem)", { lineHeight: "2rem" }],
-        "fluid-3xl": ["clamp(1.5rem, 1.35rem + 0.75vw, 1.875rem)", { lineHeight: "2.25rem" }],
-        "fluid-4xl": ["clamp(1.875rem, 1.65rem + 1.125vw, 2.25rem)", { lineHeight: "2.5rem" }],
-        "fluid-5xl": ["clamp(2.25rem, 1.95rem + 1.5vw, 3rem)", { lineHeight: "1.1" }],
-        "fluid-6xl": ["clamp(3rem, 2.55rem + 2.25vw, 3.75rem)", { lineHeight: "1.1" }],
-        "fluid-7xl": ["clamp(3.75rem, 3.15rem + 3vw, 4.5rem)", { lineHeight: "1.1" }],
-        "fluid-8xl": ["clamp(4.5rem, 3.75rem + 3.75vw, 6rem)", { lineHeight: "1.1" }],
-        "fluid-9xl": ["clamp(6rem, 4.5rem + 7.5vw, 8rem)", { lineHeight: "1.1" }],
+        // Fluid typography for responsive design
+        "fluid-xs": ["clamp(0.75rem, 0.7rem + 0.2vw, 0.8rem)", { lineHeight: "1.2" }],
+        "fluid-sm": ["clamp(0.875rem, 0.8rem + 0.3vw, 0.95rem)", { lineHeight: "1.3" }],
+        "fluid-base": ["clamp(1rem, 0.9rem + 0.4vw, 1.125rem)", { lineHeight: "1.5" }],
+        "fluid-lg": ["clamp(1.125rem, 1rem + 0.5vw, 1.25rem)", { lineHeight: "1.6" }],
+        "fluid-xl": ["clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem)", { lineHeight: "1.4" }],
+        "fluid-2xl": ["clamp(1.5rem, 1.3rem + 0.8vw, 1.875rem)", { lineHeight: "1.3" }],
+        "fluid-3xl": ["clamp(1.875rem, 1.6rem + 1.2vw, 2.25rem)", { lineHeight: "1.2" }],
+        "fluid-4xl": ["clamp(2.25rem, 1.9rem + 1.5vw, 3rem)", { lineHeight: "1.1" }],
+        "fluid-5xl": ["clamp(3rem, 2.5rem + 2vw, 3.75rem)", { lineHeight: "1.05" }],
+        "fluid-6xl": ["clamp(3.75rem, 3rem + 3vw, 4.5rem)", { lineHeight: "1" }],
 
-        // Display sizes
-        "display-sm": ["2.5rem", { lineHeight: "1.2", letterSpacing: "-0.025em" }],
-        "display-md": ["3.5rem", { lineHeight: "1.2", letterSpacing: "-0.025em" }],
-        "display-lg": ["4.5rem", { lineHeight: "1.1", letterSpacing: "-0.025em" }],
-        "display-xl": ["6rem", { lineHeight: "1.1", letterSpacing: "-0.025em" }],
-        "display-2xl": ["8rem", { lineHeight: "1.05", letterSpacing: "-0.025em" }],
+        // Display sizes for hero sections
+        "display-sm": ["2.5rem", { lineHeight: "1.2", letterSpacing: "-0.03em", fontWeight: "700" }],
+        "display-md": ["3.5rem", { lineHeight: "1.15", letterSpacing: "-0.035em", fontWeight: "700" }],
+        "display-lg": ["4.5rem", { lineHeight: "1.1", letterSpacing: "-0.04em", fontWeight: "800" }],
+        "display-xl": ["6rem", { lineHeight: "1.05", letterSpacing: "-0.045em", fontWeight: "800" }],
+        "display-2xl": ["8rem", { lineHeight: "1", letterSpacing: "-0.05em", fontWeight: "900" }],
       },
 
       spacing: {
@@ -438,46 +363,33 @@ export default {
         "header-main": "auto 1fr",
       },
 
+      // Modern shadow system - Apple/Nike inspired with subtle depth
       boxShadow: {
-        xs: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-        soft: "0 2px 8px 0 rgba(0, 0, 0, 0.08)",
-        medium: "0 4px 16px 0 rgba(0, 0, 0, 0.12)",
-        hard: "0 8px 32px 0 rgba(0, 0, 0, 0.16)",
-        xl: "0 12px 48px 0 rgba(0, 0, 0, 0.20)",
-        "2xl": "0 16px 64px 0 rgba(0, 0, 0, 0.24)",
+        // Basic shadows - more subtle and refined
+        xs: "0 1px 2px 0 rgba(0, 0, 0, 0.03)",
+        sm: "0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px 0 rgba(0, 0, 0, 0.04)",
+        DEFAULT: "0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
+        md: "0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+        lg: "0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+        xl: "0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+        "2xl": "0 25px 50px -12px rgba(0, 0, 0, 0.15)",
 
+        // Modern elevated shadows
+        elevated: "0 4px 16px 0 rgba(0, 0, 0, 0.08), 0 2px 8px 0 rgba(0, 0, 0, 0.04)",
+        "elevated-lg": "0 8px 32px 0 rgba(0, 0, 0, 0.12), 0 4px 16px 0 rgba(0, 0, 0, 0.06)",
 
+        // Subtle glow effects
+        "glow-primary": "0 0 20px rgba(100, 116, 139, 0.15)",
+        "glow-energy": "0 0 20px rgba(249, 115, 22, 0.2)",
+        "glow-success": "0 0 20px rgba(34, 197, 94, 0.15)",
 
-        // Glass & glow
-        glass: "0 8px 32px 0 rgba(31, 38, 135, 0.37)",
+        // Modern glass effect
+        glass: "0 8px 32px 0 rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
 
-        "glass-colored": "0 8px 32px 0 rgba(99, 102, 241, 0.2)",
-        "glow-primary": "0 0 20px rgba(99, 102, 241, 0.3)",
-        "glow-primary-lg": "0 0 40px rgba(99, 102, 241, 0.4)",
-        "glow-accent": "0 0 20px rgba(6, 182, 212, 0.3)",
-        "glow-accent-lg": "0 0 40px rgba(6, 182, 212, 0.4)",
-        "glow-secondary": "0 0 20px rgba(236, 72, 153, 0.3)",
-        "glow-secondary-lg": "0 0 40px rgba(236, 72, 153, 0.4)",
-
-        // Fitness glows
-        cardio: "0 4px 16px 0 rgba(239, 68, 68, 0.25)",
-        "cardio-lg": "0 8px 32px 0 rgba(239, 68, 68, 0.3)",
-        strength: "0 4px 16px 0 rgba(99, 102, 241, 0.25)",
-        "strength-lg": "0 8px 32px 0 rgba(99, 102, 241, 0.3)",
-        flexibility: "0 4px 16px 0 rgba(16, 185, 129, 0.25)",
-        "flexibility-lg": "0 8px 32px 0 rgba(16, 185, 129, 0.3)",
-        recovery: "0 4px 16px 0 rgba(236, 72, 153, 0.25)",
-        "recovery-lg": "0 8px 32px 0 rgba(236, 72, 153, 0.3)",
-        hiit: "0 4px 16px 0 rgba(249, 115, 22, 0.25)",
-        "hiit-lg": "0 8px 32px 0 rgba(249, 115, 22, 0.3)",
-        yoga: "0 4px 16px 0 rgba(34, 197, 94, 0.25)",
-        "yoga-lg": "0 8px 32px 0 rgba(34, 197, 94, 0.3)",
-        pilates: "0 4px 16px 0 rgba(168, 85, 247, 0.25)",
-        "pilates-lg": "0 8px 32px 0 rgba(168, 85, 247, 0.3)",
-
-        energy: "0 4px 20px 0 rgba(249, 115, 22, 0.4)",
-        power: "0 4px 20px 0 rgba(220, 38, 38, 0.4)",
-        achievement: "0 4px 20px 0 rgba(245, 158, 11, 0.4)",
+        // Fitness-specific shadows (simplified)
+        cardio: "0 4px 16px 0 rgba(249, 115, 22, 0.15)",
+        strength: "0 4px 16px 0 rgba(100, 116, 139, 0.15)",
+        recovery: "0 4px 16px 0 rgba(34, 197, 94, 0.15)",
       },
 
       // Animations & keyframes (kept in config to allow class-based usage)

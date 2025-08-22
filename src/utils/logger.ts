@@ -49,6 +49,7 @@ class SimpleLogger {
   auth = {
     login: (userId: string) => this.info('User logged in', { userId, action: 'login' }),
     logout: (userId: string) => this.info('User logged out', { userId, action: 'logout' }),
+    warn: (message: string, context?: LogContext) => this.warn(`Auth warning: ${message}`, { ...context, component: 'auth' }),
     error: (message: string, error?: Error) => this.error(`Auth error: ${message}`, error, { component: 'auth' })
   };
 

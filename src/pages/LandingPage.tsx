@@ -85,12 +85,12 @@ const DemoWorkoutCard: React.FC = () => {
       variants={fadeUp(0.2)}
       initial="initial"
       animate="animate"
-      className="relative w-full max-w-md mx-auto md:mx-0 rounded-2xl bg-gradient-glass backdrop-blur-md border border-white/20 shadow-glass p-5"
+      className="relative w-full max-w-md mx-auto md:mx-0 rounded-2xl bg-white border border-neutral-200 shadow-elevated p-6"
       aria-label="Preview of an AI-generated workout"
     >
-      <div className="flex items-center gap-2 text-sm font-medium text-primary-700">
+      <div className="flex items-center gap-2 text-sm font-medium text-energy-600">
         <SparklesIcon className="h-4 w-4" aria-hidden="true" />
-        <span className="bg-gradient-primary bg-clip-text text-transparent">AI Plan • Today</span>
+        <span className="bg-gradient-energy bg-clip-text text-transparent">AI Plan • Today</span>
       </div>
 
       <h3 className="mt-2 text-xl font-semibold text-neutral-900">
@@ -111,31 +111,31 @@ const DemoWorkoutCard: React.FC = () => {
 
       <ul className="mt-4 space-y-2 text-sm text-neutral-700 dark:text-neutral-200">
         <li className="flex items-start gap-2">
-          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary-500" aria-hidden="true" />
+          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-energy-500" aria-hidden="true" />
           Push‑ups — 3×12 (tempo 2‑1‑2)
         </li>
         <li className="flex items-start gap-2">
-          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary-500" aria-hidden="true" />
+          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-energy-500" aria-hidden="true" />
           Pike Shoulder Press — 3×10
         </li>
         <li className="flex items-start gap-2">
-          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary-500" aria-hidden="true" />
+          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-energy-500" aria-hidden="true" />
           Band Row — 3×15
         </li>
         <li className="flex items-start gap-2">
-          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary-500" aria-hidden="true" />
+          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-energy-500" aria-hidden="true" />
           Plank — 3×40s
         </li>
       </ul>
 
       <div className="mt-5 flex gap-3">
         <Link to="/signup" className="flex-1">
-          <Button variant="gradient" size="md" className="w-full" glow>
+          <Button variant="energy" size="md" className="w-full">
             Start Now
           </Button>
         </Link>
         <Link to="/login">
-          <Button variant="glass" size="md" className="px-4">
+          <Button variant="secondary" size="md" className="px-4">
             Shuffle
           </Button>
         </Link>
@@ -148,11 +148,11 @@ export const LandingPage: React.FC = () => {
   const reduceMotion = useReducedMotion();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-primary-50/20 relative overflow-hidden">
+    <div className="min-h-screen bg-white relative overflow-hidden">
       {/* Skip link for keyboard users */}
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:shadow-lg"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-2xl focus:bg-primary-600 focus:text-white focus:px-4 focus:py-2 focus:text-sm focus:shadow-lg focus:font-semibold"
       >
         Skip to content
       </a>
@@ -167,7 +167,7 @@ export const LandingPage: React.FC = () => {
               : { scale: [1, 1.18, 1], opacity: [0.08, 0.22, 0.08] }
           }
           transition={reduceMotion ? { duration: 0 } : { duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-primary rounded-full blur-3xl"
+          className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-energy rounded-full blur-3xl"
         />
         <motion.div
           animate={
@@ -176,7 +176,7 @@ export const LandingPage: React.FC = () => {
               : { scale: [1.1, 0.92, 1.1], opacity: [0.12, 0.28, 0.12] }
           }
           transition={reduceMotion ? { duration: 0 } : { duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-          className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-gradient-accent rounded-full blur-3xl"
+          className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-gradient-success rounded-full blur-3xl"
         />
       </div>
 
@@ -189,36 +189,36 @@ export const LandingPage: React.FC = () => {
             animate="animate"
             className="text-center"
           >
-            <div className="inline-flex items-center px-5 py-2.5 rounded-full bg-gradient-glass backdrop-blur-md border border-white/20 text-primary-700 text-sm font-semibold mb-7 shadow-glass">
-              <SparklesIcon className="w-4 h-4 mr-2 text-primary-500" aria-hidden="true" />
-              <span className="bg-gradient-primary bg-clip-text text-transparent">
+            <div className="inline-flex items-center px-5 py-2.5 rounded-full bg-neutral-100 border border-neutral-200 text-neutral-700 text-sm font-semibold mb-7 shadow-sm">
+              <SparklesIcon className="w-4 h-4 mr-2 text-energy-500" aria-hidden="true" />
+              <span className="bg-gradient-energy bg-clip-text text-transparent">
                 AI‑Powered Fitness, Personalized
               </span>
-              <span className="ml-2 inline-flex h-2 w-2 rounded-full bg-primary-500 animate-pulse" aria-hidden="true" />
+              <span className="ml-2 inline-flex h-2 w-2 rounded-full bg-energy-500 animate-pulse" aria-hidden="true" />
             </div>
 
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-display font-bold text-neutral-900 leading-tight tracking-tight">
               Your AI Fitness
               <br />
-              <span className="bg-gradient-hero bg-clip-text text-transparent animate-gradient bg-[length:200%_200%]">
+              <span className="bg-gradient-energy bg-clip-text text-transparent">
                 Revolution
               </span>
             </h1>
 
             <p className="mt-6 text-lg md:text-xl text-neutral-600 mx-auto max-w-3xl leading-relaxed">
               Transform your training with{' '}
-              <span className="font-semibold bg-gradient-primary bg-clip-text text-transparent">adaptive workouts</span>{' '}
+              <span className="font-semibold bg-gradient-energy bg-clip-text text-transparent">adaptive workouts</span>{' '}
               tuned to your goals, schedule, and equipment—evolving automatically as you do.
             </p>
 
             <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/signup" aria-label="Create your free NeuraFit account">
-                <Button variant="gradient" size="lg" className="text-lg px-8 py-4 font-semibold" glow>
+                <Button variant="energy" size="lg" className="text-lg px-8 py-4 font-semibold">
                   Start Your Journey
                 </Button>
               </Link>
               <Link to="/login" aria-label="Sign in to NeuraFit">
-                <Button variant="glass" size="lg" className="text-lg px-8 py-4 font-semibold">
+                <Button variant="secondary" size="lg" className="text-lg px-8 py-4 font-semibold">
                   Sign In
                 </Button>
               </Link>
@@ -290,7 +290,7 @@ export const LandingPage: React.FC = () => {
               </p>
               <div className="mt-8 flex justify-center">
                 <Link to="/signup">
-                  <Button size="lg" className="px-8 py-4 text-lg" variant="gradient" glow>
+                  <Button size="lg" className="px-8 py-4 text-lg" variant="energy">
                     Get Started Free
                   </Button>
                 </Link>

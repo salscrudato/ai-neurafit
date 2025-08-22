@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { OnboardingStep1 } from '../components/onboarding/OnboardingStep1';
 import { OnboardingStep2 } from '../components/onboarding/OnboardingStep2';
 import { OnboardingStep3 } from '../components/onboarding/OnboardingStep3';
@@ -9,6 +9,7 @@ import { OnboardingStep5 } from '../components/onboarding/OnboardingStep5';
 import { UserProfileService } from '../services/userProfileService';
 import { useAuthStore } from '../store/authStore';
 import type { FitnessLevel, FitnessGoal, Equipment, WorkoutType } from '../types';
+import { Button } from '../components/ui/Button';
 
 interface OnboardingData {
   fitnessLevel: FitnessLevel | null;
@@ -22,15 +23,21 @@ interface OnboardingData {
   preferences: {
     workoutTypes: WorkoutType[];
     intensity: 'low' | 'moderate' | 'high';
-    restDayPreference: number;
+    restDayPreference: number; // 0..6
     injuriesOrLimitations: string[];
   };
 }
 
+const STORAGE_KEY = 'onboardingDraft:v1';
+
 export const OnboardingPage: React.FC = () => {
   const navigate = useNavigate();
+  const shouldReduceMotion = useReducedMotion();
   const { setOnboardingCompleted, setError, clearError } = useAuthStore();
+
   const [currentStep, setCurrentStep] = useState(1);
+  const totalSteps = 5;
+
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
     fitnessLevel: null,
     fitnessGoals: [],
@@ -48,29 +55,167 @@ export const OnboardingPage: React.FC = () => {
     },
   });
 
-  const totalSteps = 5;
+  const [stepError, setStepError] = useState<string>('');
+  const [submitting, setSubmitting] = useState(false);
+  const [online, setOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true,
+  );
+
+  const dirtyRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    document.title = 'Onboarding • NeuraFit';
+  }, []);
+
+  /* ------------------------------ Draft: load/save ------------------------------ */
+
+  // Load draft on mount (once)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed?.data) {
+        setOnboardingData(parsed.data);
+        if (parsed.currentStep && parsed.currentStep >= 1 && parsed.currentStep <= totalSteps) {
+          setCurrentStep(parsed.currentStep);
+        }
+      }
+    } catch {
+      // ignore corrupted drafts
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Autosave (debounced)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({ data: onboardingData, currentStep }),
+        );
+        dirtyRef.current = true;
+      } catch {
+        // storage may be full/blocked; ignore
+      }
+    }, 250);
+    return () => clearTimeout(t);
+  }, [onboardingData, currentStep]);
+
+  // Warn on unload if editing
+  useEffect(() => {
+    const beforeUnload = (e: BeforeUnloadEvent) => {
+      if (dirtyRef.current && !submitting) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', beforeUnload);
+    return () => window.removeEventListener('beforeunload', beforeUnload);
+  }, [submitting]);
+
+  // Online/offline banner
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => {
+      window.removeEventListener('online', on);
+      window.removeEventListener('offline', off);
+    };
+  }, []);
+
+  /* ------------------------------ Derived preview ------------------------------ */
+
+  const weeklyMinutes = useMemo(
+    () =>
+      (onboardingData.timeCommitment?.daysPerWeek || 0) *
+      (onboardingData.timeCommitment?.minutesPerSession || 0),
+    [onboardingData.timeCommitment],
+  );
+
+  const intensityScore = useMemo(() => {
+    const m = { low: 1, moderate: 2, high: 3 } as const;
+    return m[onboardingData.preferences.intensity];
+  }, [onboardingData.preferences.intensity]);
+
+  const trainingLoadEstimate = useMemo(
+    () => weeklyMinutes * intensityScore,
+    [weeklyMinutes, intensityScore],
+  );
+
+  /* -------------------------------- Validation -------------------------------- */
+
+  const validateStep = (step: number, data: OnboardingData): string | null => {
+    if (step === 1) {
+      if (!data.fitnessLevel) return 'Please choose your current fitness level.';
+    }
+    if (step === 2) {
+      if (!data.fitnessGoals.length) return 'Select at least one primary goal.';
+    }
+    if (step === 3) {
+      // equipment optional; no-op
+    }
+    if (step === 4) {
+      const { daysPerWeek, minutesPerSession, preferredTimes } = data.timeCommitment;
+      if (daysPerWeek < 1 || daysPerWeek > 7) return 'Days per week must be between 1 and 7.';
+      if (minutesPerSession < 10 || minutesPerSession > 180)
+        return 'Minutes per session must be between 10 and 180.';
+      if (!preferredTimes || !preferredTimes.length)
+        return 'Select at least one preferred time of day.';
+    }
+    if (step === 5) {
+      // preferences.intensity required by default state; restDayPreference 0..6
+      const rdp = data.preferences.restDayPreference;
+      if (rdp < 0 || rdp > 6) return 'Choose a rest day (0–6).';
+    }
+    return null;
+  };
+
+  /* --------------------------------- Handlers --------------------------------- */
 
   const updateOnboardingData = (stepData: Partial<OnboardingData>) => {
-    setOnboardingData(prev => ({ ...prev, ...stepData }));
+    setOnboardingData((prev) => ({ ...prev, ...stepData }));
+    setStepError('');
   };
 
   const nextStep = () => {
+    const err = validateStep(currentStep, onboardingData);
+    if (err) {
+      setStepError(err);
+      return;
+    }
     if (currentStep < totalSteps) {
-      setCurrentStep(prev => prev + 1);
+      setCurrentStep((s) => s + 1);
+      setStepError('');
     }
   };
 
   const prevStep = () => {
     if (currentStep > 1) {
-      setCurrentStep(prev => prev - 1);
+      setCurrentStep((s) => s - 1);
+      setStepError('');
     }
   };
 
   const handleComplete = async () => {
-    try {
-      clearError();
+    // Validate final step before submit
+    const err = validateStep(currentStep, onboardingData) || validateStep(5, onboardingData);
+    if (err) {
+      setStepError(err);
+      return;
+    }
 
-      // Save the onboarding data to the backend
+    clearError();
+    setSubmitting(true);
+    setStepError('');
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+
+    try {
       await UserProfileService.createUserProfile({
         fitnessLevel: onboardingData.fitnessLevel!,
         fitnessGoals: onboardingData.fitnessGoals,
@@ -79,61 +224,43 @@ export const OnboardingPage: React.FC = () => {
         preferences: onboardingData.preferences,
       });
 
-      // Mark onboarding as completed
+      // Clear draft and mark complete
+      localStorage.removeItem(STORAGE_KEY);
+      dirtyRef.current = false;
       setOnboardingCompleted(true);
-
-      // Navigate to the app
       navigate('/app');
     } catch (error: any) {
       console.error('Error completing onboarding:', error);
-      setError(error.message || 'Failed to complete onboarding');
+      setError(error?.message || 'Failed to complete onboarding');
+      setStepError(error?.message || 'Failed to complete onboarding');
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  /* --------------------------------- Rendering -------------------------------- */
+
   const renderStep = () => {
+    const stepProps = {
+      data: onboardingData,
+      onUpdate: updateOnboardingData,
+    };
     switch (currentStep) {
       case 1:
-        return (
-          <OnboardingStep1
-            data={onboardingData}
-            onUpdate={updateOnboardingData}
-            onNext={nextStep}
-          />
-        );
+        return <OnboardingStep1 {...stepProps} onNext={nextStep} />;
       case 2:
-        return (
-          <OnboardingStep2
-            data={onboardingData}
-            onUpdate={updateOnboardingData}
-            onNext={nextStep}
-            onPrev={prevStep}
-          />
-        );
+        return <OnboardingStep2 {...stepProps} onNext={nextStep} onPrev={prevStep} />;
       case 3:
-        return (
-          <OnboardingStep3
-            data={onboardingData}
-            onUpdate={updateOnboardingData}
-            onNext={nextStep}
-            onPrev={prevStep}
-          />
-        );
+        return <OnboardingStep3 {...stepProps} onNext={nextStep} onPrev={prevStep} />;
       case 4:
-        return (
-          <OnboardingStep4
-            data={onboardingData}
-            onUpdate={updateOnboardingData}
-            onNext={nextStep}
-            onPrev={prevStep}
-          />
-        );
+        return <OnboardingStep4 {...stepProps} onNext={nextStep} onPrev={prevStep} />;
       case 5:
         return (
           <OnboardingStep5
-            data={onboardingData}
-            onUpdate={updateOnboardingData}
+            {...stepProps}
             onComplete={handleComplete}
             onPrev={prevStep}
+            submitting={submitting}
           />
         );
       default:
@@ -142,27 +269,48 @@ export const OnboardingPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-neutral-50 py-8 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* subtle moving gradient accent */}
+      <motion.div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-r from-primary-100 via-cyan-100 to-primary-100 opacity-60 blur-2xl bg-[length:200%_100%]"
+        animate={
+          shouldReduceMotion
+            ? { opacity: 0.35 }
+            : { backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }
+        }
+        transition={
+          shouldReduceMotion ? { duration: 0 } : { duration: 18, repeat: Infinity, ease: 'easeInOut' }
+        }
+      />
+
+      {/* offline banner */}
+      {!online && (
+        <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+          You’re offline. Changes are saved locally and will sync when you’re back online.
+        </div>
+      )}
+
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold gradient-bg bg-clip-text text-transparent">
+          <h1 className="text-3xl font-display font-bold bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">
             NeuraFit
           </h1>
-          <p className="text-gray-600 mt-2">Let's personalize your fitness journey</p>
+          <p className="text-neutral-600 mt-2">Let’s personalize your fitness journey</p>
         </div>
 
-        {/* Progress Bar */}
+        {/* Progress */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700">
+            <span className="text-sm font-medium text-neutral-700">
               Step {currentStep} of {totalSteps}
             </span>
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-neutral-500">
               {Math.round((currentStep / totalSteps) * 100)}% Complete
             </span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-neutral-200 rounded-full h-2">
             <motion.div
               className="bg-primary-600 h-2 rounded-full"
               initial={{ width: 0 }}
@@ -172,18 +320,77 @@ export const OnboardingPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Derived preview */}
+        <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-lg border border-neutral-200 bg-white p-3 text-center">
+            <div className="text-xs text-neutral-500">Weekly minutes</div>
+            <div className="text-xl font-semibold text-neutral-900">{weeklyMinutes}</div>
+          </div>
+          <div className="rounded-lg border border-neutral-200 bg-white p-3 text-center">
+            <div className="text-xs text-neutral-500">Intensity</div>
+            <div className="text-xl font-semibold text-neutral-900">
+              {onboardingData.preferences.intensity}
+            </div>
+          </div>
+          <div className="rounded-lg border border-neutral-200 bg-white p-3 text-center">
+            <div className="text-xs text-neutral-500">Training load (est.)</div>
+            <div className="text-xl font-semibold text-neutral-900">{trainingLoadEstimate}</div>
+          </div>
+        </div>
+
+        {/* Step Error */}
+        {stepError && (
+          <div className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700" role="alert">
+            {stepError}
+          </div>
+        )}
+
         {/* Step Content */}
         <AnimatePresence mode="wait">
           <motion.div
             key={currentStep}
-            initial={{ opacity: 0, x: 20 }}
+            initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.3 }}
+            exit={{ opacity: 0, x: -16 }}
+            transition={{ duration: 0.25 }}
           >
             {renderStep()}
           </motion.div>
         </AnimatePresence>
+
+        {/* Footer actions */}
+        <div className="mt-6 flex items-center justify-between">
+          <Button
+            variant="ghost"
+            onClick={() => {
+              try {
+                localStorage.setItem(
+                  STORAGE_KEY,
+                  JSON.stringify({ data: onboardingData, currentStep }),
+                );
+                dirtyRef.current = false;
+              } catch {}
+              navigate('/app');
+            }}
+          >
+            Save & exit
+          </Button>
+
+          <div className="flex items-center gap-3">
+            {currentStep > 1 && (
+              <Button variant="outline" onClick={prevStep}>
+                Back
+              </Button>
+            )}
+            {currentStep < totalSteps ? (
+              <Button onClick={nextStep}>Next</Button>
+            ) : (
+              <Button onClick={handleComplete} loading={submitting} disabled={submitting}>
+                Finish
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

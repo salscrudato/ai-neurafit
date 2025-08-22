@@ -1,6 +1,7 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { memo, useId, useMemo, useRef } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Button } from '../ui/Button';
+import { XMarkIcon as XIcon } from '@heroicons/react/24/outline';
 
 interface OnboardingStep4Props {
   data: any;
@@ -15,7 +16,7 @@ const daysPerWeekOptions = [
   { value: 4, label: '4 days', description: 'Regular routine' },
   { value: 5, label: '5 days', description: 'Dedicated training' },
   { value: 6, label: '6 days', description: 'Intensive program' },
-  { value: 7, label: '7 days', description: 'Daily activity' }
+  { value: 7, label: '7 days', description: 'Daily activity' },
 ];
 
 const minutesPerSessionOptions = [
@@ -23,200 +24,408 @@ const minutesPerSessionOptions = [
   { value: 30, label: '30 min', description: 'Standard length' },
   { value: 45, label: '45 min', description: 'Extended workout' },
   { value: 60, label: '60 min', description: 'Full hour' },
-  { value: 90, label: '90 min', description: 'Long sessions' }
+  { value: 90, label: '90 min', description: 'Long sessions' },
 ];
 
 const preferredTimesOptions = [
-  { value: 'early_morning', label: 'Early Morning', description: '5:00 - 8:00 AM' },
-  { value: 'morning', label: 'Morning', description: '8:00 - 11:00 AM' },
-  { value: 'midday', label: 'Midday', description: '11:00 AM - 2:00 PM' },
-  { value: 'afternoon', label: 'Afternoon', description: '2:00 - 5:00 PM' },
-  { value: 'evening', label: 'Evening', description: '5:00 - 8:00 PM' },
-  { value: 'night', label: 'Night', description: '8:00 - 11:00 PM' }
+  { value: 'early_morning', label: 'Early Morning', description: '5:00 – 8:00 AM' },
+  { value: 'morning',       label: 'Morning',       description: '8:00 – 11:00 AM' },
+  { value: 'midday',        label: 'Midday',        description: '11:00 AM – 2:00 PM' },
+  { value: 'afternoon',     label: 'Afternoon',     description: '2:00 – 5:00 PM' },
+  { value: 'evening',       label: 'Evening',       description: '5:00 – 8:00 PM' },
+  { value: 'night',         label: 'Night',         description: '8:00 – 11:00 PM' },
 ];
 
-export const OnboardingStep4: React.FC<OnboardingStep4Props> = ({
-  data,
-  onUpdate,
-  onNext,
-  onPrev
-}) => {
-  const handleDaysPerWeekChange = (days: number) => {
-    onUpdate({
-      timeCommitment: {
-        ...data.timeCommitment,
-        daysPerWeek: days
+export const OnboardingStep4: React.FC<OnboardingStep4Props> = memo(
+  ({ data, onUpdate, onNext, onPrev }) => {
+    const reduceMotion = useReducedMotion();
+
+    const groupIdDays = useId();
+    const groupIdMinutes = useId();
+    const groupIdTimes = useId();
+    const descDays = `${groupIdDays}-desc`;
+    const descMinutes = `${groupIdMinutes}-desc`;
+    const descTimes = `${groupIdTimes}-desc`;
+
+    const daysSelected = data?.timeCommitment?.daysPerWeek ?? 0;
+    const minutesSelected = data?.timeCommitment?.minutesPerSession ?? 0;
+    const timesSelected: string[] = Array.isArray(data?.timeCommitment?.preferredTimes)
+      ? data.timeCommitment.preferredTimes
+      : [];
+
+    const weeklyMinutes = useMemo(
+      () => (daysSelected || 0) * (minutesSelected || 0),
+      [daysSelected, minutesSelected]
+    );
+
+    // Refs for roving focus
+    const daysRefs = useRef<Array<HTMLButtonElement | null>>([]);
+    const minutesRefs = useRef<Array<HTMLButtonElement | null>>([]);
+    const timesRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+    const firstDaysIndex = Math.max(
+      0,
+      daysPerWeekOptions.findIndex((o) => o.value === daysSelected)
+    );
+    const firstMinutesIndex = Math.max(
+      0,
+      minutesPerSessionOptions.findIndex((o) => o.value === minutesSelected)
+    );
+    const firstTimesIndex = Math.max(
+      0,
+      preferredTimesOptions.findIndex((o) => timesSelected.includes(o.value))
+    );
+
+    /* ------------------------------ Updaters ------------------------------ */
+    const updateTimeCommitment = (patch: Partial<typeof data.timeCommitment>) => {
+      onUpdate({
+        timeCommitment: {
+          ...data.timeCommitment,
+          ...patch,
+        },
+      });
+    };
+
+    const handleDaysPerWeekChange = (days: number) => {
+      updateTimeCommitment({ daysPerWeek: days });
+    };
+
+    const handleMinutesPerSessionChange = (minutes: number) => {
+      updateTimeCommitment({ minutesPerSession: minutes });
+    };
+
+    const handlePreferredTimeToggle = (time: string) => {
+      const currentTimes = timesSelected;
+      const next = currentTimes.includes(time)
+        ? currentTimes.filter((t) => t !== time)
+        : [...currentTimes, time];
+      updateTimeCommitment({ preferredTimes: next });
+    };
+
+    const clearPreferredTimes = () => updateTimeCommitment({ preferredTimes: [] });
+
+    /* ------------------------------ Keyboard ------------------------------ */
+    const moveFocus = (refs: React.MutableRefObject<Array<HTMLButtonElement | null>>, nextIndex: number) => {
+      const list = refs.current;
+      const len = list.length;
+      if (!len) return;
+      const idx = (nextIndex + len) % len;
+      list[idx]?.focus();
+    };
+
+    const onRadioKeyDown = (
+      e: React.KeyboardEvent<HTMLButtonElement>,
+      refs: React.MutableRefObject<Array<HTMLButtonElement | null>>,
+      currentIndex: number,
+      onActivate: () => void
+    ) => {
+      switch (e.key) {
+        case 'ArrowRight':
+        case 'ArrowDown':
+          e.preventDefault();
+          moveFocus(refs, currentIndex + 1);
+          break;
+        case 'ArrowLeft':
+        case 'ArrowUp':
+          e.preventDefault();
+          moveFocus(refs, currentIndex - 1);
+          break;
+        case 'Home':
+          e.preventDefault();
+          moveFocus(refs, 0);
+          break;
+        case 'End':
+          e.preventDefault();
+          moveFocus(refs, refs.current.length - 1);
+          break;
+        case ' ':
+        case 'Enter':
+          e.preventDefault();
+          onActivate();
+          break;
+        default:
+          break;
       }
-    });
-  };
+    };
 
-  const handleMinutesPerSessionChange = (minutes: number) => {
-    onUpdate({
-      timeCommitment: {
-        ...data.timeCommitment,
-        minutesPerSession: minutes
+    const onCheckboxKeyDown = (
+      e: React.KeyboardEvent<HTMLButtonElement>,
+      refs: React.MutableRefObject<Array<HTMLButtonElement | null>>,
+      currentIndex: number,
+      onToggle: () => void
+    ) => {
+      switch (e.key) {
+        case 'ArrowRight':
+        case 'ArrowDown':
+          e.preventDefault();
+          moveFocus(refs, currentIndex + 1);
+          break;
+        case 'ArrowLeft':
+        case 'ArrowUp':
+          e.preventDefault();
+          moveFocus(refs, currentIndex - 1);
+          break;
+        case 'Home':
+          e.preventDefault();
+          moveFocus(refs, 0);
+          break;
+        case 'End':
+          e.preventDefault();
+          moveFocus(refs, refs.current.length - 1);
+          break;
+        case ' ':
+        case 'Enter':
+          e.preventDefault();
+          onToggle();
+          break;
+        default:
+          break;
       }
-    });
-  };
+    };
 
-  const handlePreferredTimeToggle = (time: string) => {
-    const currentTimes = data.timeCommitment?.preferredTimes || [];
-    const isSelected = currentTimes.includes(time);
-    
-    let updatedTimes;
-    if (isSelected) {
-      updatedTimes = currentTimes.filter((t: string) => t !== time);
-    } else {
-      updatedTimes = [...currentTimes, time];
-    }
-    
-    onUpdate({
-      timeCommitment: {
-        ...data.timeCommitment,
-        preferredTimes: updatedTimes
-      }
-    });
-  };
+    /* ------------------------------- Proceed ------------------------------ */
+    const canProceed =
+      !!daysSelected &&
+      !!minutesSelected &&
+      Array.isArray(timesSelected) &&
+      timesSelected.length > 0;
 
-  const canProceed = data.timeCommitment?.daysPerWeek && 
-                    data.timeCommitment?.minutesPerSession &&
-                    data.timeCommitment?.preferredTimes?.length > 0;
+    return (
+      <div className="card relative overflow-hidden">
+        {/* Subtle moving gradient accent */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 -top-px h-[3px] bg-gradient-to-r from-primary-200 via-cyan-200 to-primary-200 bg-[length:200%_100%]"
+          style={{ animation: reduceMotion ? undefined : 'gradientPan 10s ease infinite' }}
+        />
 
-  return (
-    <div className="card">
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          How much time can you commit?
-        </h2>
-        <p className="text-gray-600">
-          Help us create a realistic schedule that fits your lifestyle
-        </p>
-      </div>
-
-      <div className="space-y-8 mb-8">
-        {/* Days per week */}
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            How many days per week?
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {daysPerWeekOptions.map((option, index) => (
-              <motion.button
-                key={option.value}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-                onClick={() => handleDaysPerWeekChange(option.value)}
-                className={`p-4 rounded-lg border-2 transition-all duration-200 text-center ${
-                  data.timeCommitment?.daysPerWeek === option.value
-                    ? 'border-primary-500 bg-primary-50 shadow-md'
-                    : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
-                }`}
-              >
-                <div className="text-xl font-bold text-gray-900 mb-1">
-                  {option.label}
-                </div>
-                <div className="text-sm text-gray-600">
-                  {option.description}
-                </div>
-              </motion.button>
-            ))}
-          </div>
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold text-neutral-900 mb-2">
+            How much time can you commit?
+          </h2>
+          <p className="text-neutral-600">
+            Help us create a realistic schedule that fits your lifestyle.
+          </p>
         </div>
 
-        {/* Minutes per session */}
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            How long per session?
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {minutesPerSessionOptions.map((option, index) => (
-              <motion.button
-                key={option.value}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-                onClick={() => handleMinutesPerSessionChange(option.value)}
-                className={`p-4 rounded-lg border-2 transition-all duration-200 text-center ${
-                  data.timeCommitment?.minutesPerSession === option.value
-                    ? 'border-primary-500 bg-primary-50 shadow-md'
-                    : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
-                }`}
-              >
-                <div className="text-xl font-bold text-gray-900 mb-1">
-                  {option.label}
-                </div>
-                <div className="text-sm text-gray-600">
-                  {option.description}
-                </div>
-              </motion.button>
-            ))}
-          </div>
-        </div>
+        <div className="space-y-8 mb-8">
+          {/* Days per week — Radiogroup */}
+          <section>
+            <h3 className="text-lg font-semibold text-neutral-900 mb-4">How many days per week?</h3>
+            <p id={descDays} className="sr-only">Select one option for training days per week</p>
+            <div
+              role="radiogroup"
+              aria-labelledby={`${groupIdDays}-label`}
+              aria-describedby={descDays}
+              className="grid grid-cols-2 sm:grid-cols-3 gap-3"
+            >
+              <span id={`${groupIdDays}-label`} className="sr-only">Days per week</span>
+              {daysPerWeekOptions.map((option, index) => {
+                const selected = daysSelected === option.value;
+                return (
+                  <motion.button
+                    key={option.value}
+                    ref={(el) => { daysRefs.current[index] = el; }}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    tabIndex={index === (firstDaysIndex >= 0 ? firstDaysIndex : 0) ? 0 : -1}
+                    initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+                    animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, delay: index * 0.05 }}
+                    onKeyDown={(e) =>
+                      onRadioKeyDown(e, daysRefs, index, () => handleDaysPerWeekChange(option.value))
+                    }
+                    onClick={() => handleDaysPerWeekChange(option.value)}
+                    className={[
+                      'p-4 rounded-lg border-2 transition-all duration-200 text-center bg-white',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2',
+                      selected
+                        ? 'border-primary-500 bg-primary-50 shadow-md'
+                        : 'border-neutral-200 hover:border-neutral-300 hover:shadow-sm',
+                    ].join(' ')}
+                  >
+                    <div className="text-xl font-bold text-neutral-900 mb-1">
+                      {option.label}
+                    </div>
+                    <div className="text-sm text-neutral-600">{option.description}</div>
+                  </motion.button>
+                );
+              })}
+            </div>
+          </section>
 
-        {/* Preferred times */}
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            When do you prefer to work out?
-          </h3>
-          <p className="text-sm text-gray-600 mb-4">Select all that work for you</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {preferredTimesOptions.map((option, index) => {
-              const isSelected = data.timeCommitment?.preferredTimes?.includes(option.value);
-              
-              return (
-                <motion.button
-                  key={option.value}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
-                  onClick={() => handlePreferredTimeToggle(option.value)}
-                  className={`p-4 rounded-lg border-2 transition-all duration-200 text-center ${
-                    isSelected
-                      ? 'border-primary-500 bg-primary-50 shadow-md'
-                      : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
-                  }`}
-                >
-                  <div className="font-semibold text-gray-900 mb-1">
-                    {option.label}
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    {option.description}
-                  </div>
-                  {isSelected && (
-                    <div className="mt-2">
-                      <div className="inline-flex items-center justify-center w-5 h-5 bg-primary-600 rounded-full">
-                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+          {/* Minutes per session — Radiogroup */}
+          <section>
+            <h3 className="text-lg font-semibold text-neutral-900 mb-4">How long per session?</h3>
+            <p id={descMinutes} className="sr-only">Select one option for minutes per session</p>
+            <div
+              role="radiogroup"
+              aria-labelledby={`${groupIdMinutes}-label`}
+              aria-describedby={descMinutes}
+              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"
+            >
+              <span id={`${groupIdMinutes}-label`} className="sr-only">Minutes per session</span>
+              {minutesPerSessionOptions.map((option, index) => {
+                const selected = minutesSelected === option.value;
+                return (
+                  <motion.button
+                    key={option.value}
+                    ref={(el) => { minutesRefs.current[index] = el; }}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    tabIndex={index === (firstMinutesIndex >= 0 ? firstMinutesIndex : 0) ? 0 : -1}
+                    initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+                    animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, delay: index * 0.05 }}
+                    onKeyDown={(e) =>
+                      onRadioKeyDown(e, minutesRefs, index, () =>
+                        handleMinutesPerSessionChange(option.value)
+                      )
+                    }
+                    onClick={() => handleMinutesPerSessionChange(option.value)}
+                    className={[
+                      'p-4 rounded-lg border-2 transition-all duration-200 text-center bg-white',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2',
+                      selected
+                        ? 'border-primary-500 bg-primary-50 shadow-md'
+                        : 'border-neutral-200 hover:border-neutral-300 hover:shadow-sm',
+                    ].join(' ')}
+                  >
+                    <div className="text-xl font-bold text-neutral-900 mb-1">
+                      {option.label}
+                    </div>
+                    <div className="text-sm text-neutral-600">{option.description}</div>
+                  </motion.button>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Preferred times — Checkbox group */}
+          <section>
+            <h3 className="text-lg font-semibold text-neutral-900 mb-4">When do you prefer to work out?</h3>
+            <p className="text-sm text-neutral-600 mb-4">Select all that work for you</p>
+            <p id={descTimes} className="sr-only">Select one or more preferred time windows</p>
+
+            <div
+              role="group"
+              aria-labelledby={`${groupIdTimes}-label`}
+              aria-describedby={descTimes}
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
+            >
+              <span id={`${groupIdTimes}-label`} className="sr-only">Preferred times</span>
+              {preferredTimesOptions.map((option, index) => {
+                const selected = timesSelected.includes(option.value);
+                return (
+                  <motion.button
+                    key={option.value}
+                    ref={(el) => { timesRefs.current[index] = el; }}
+                    type="button"
+                    role="checkbox"
+                    aria-checked={selected}
+                    tabIndex={index === (firstTimesIndex >= 0 ? firstTimesIndex : 0) ? 0 : -1}
+                    initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+                    animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, delay: index * 0.05 }}
+                    onKeyDown={(e) => onCheckboxKeyDown(e, timesRefs, index, () => handlePreferredTimeToggle(option.value))}
+                    onClick={() => handlePreferredTimeToggle(option.value)}
+                    className={[
+                      'p-4 rounded-lg border-2 transition-all duration-200 text-center bg-white',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2',
+                      selected
+                        ? 'border-primary-500 bg-primary-50 shadow-md'
+                        : 'border-neutral-200 hover:border-neutral-300 hover:shadow-sm',
+                    ].join(' ')}
+                  >
+                    <div className="font-semibold text-neutral-900 mb-1">{option.label}</div>
+                    <div className="text-sm text-neutral-600">{option.description}</div>
+                    {selected && (
+                      <div className="mt-2 inline-flex items-center justify-center w-5 h-5 bg-primary-600 rounded-full">
+                        <svg className="w-3 h-3 text-white" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
                         </svg>
                       </div>
-                    </div>
+                    )}
+                  </motion.button>
+                );
+              })}
+            </div>
+
+            {/* Summary & clear */}
+            {timesSelected.length > 0 && (
+              <div className="mt-4 rounded-lg border border-primary-100 bg-primary-50 px-3 py-2">
+                <p className="text-sm text-primary-700">
+                  <strong>Selected times:</strong>{' '}
+                  {preferredTimesOptions
+                    .filter((t) => timesSelected.includes(t.value))
+                    .map((t) => t.label)
+                    .join(', ')}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2" aria-live="polite">
+                  {preferredTimesOptions
+                    .filter((t) => timesSelected.includes(t.value))
+                    .map((t) => (
+                      <span
+                        key={t.value}
+                        className="inline-flex items-center gap-1 rounded-full border border-primary-200 bg-white px-3 py-1 text-xs font-medium text-neutral-700"
+                      >
+                        {t.label}
+                        <button
+                          type="button"
+                          aria-label={`Remove ${t.label}`}
+                          onClick={() => handlePreferredTimeToggle(t.value)}
+                          className="ml-1 rounded-full p-0.5 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
+                        >
+                          <XIcon className="h-3.5 w-3.5 text-neutral-500" aria-hidden="true" />
+                        </button>
+                      </span>
+                    ))}
+                  {timesSelected.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={clearPreferredTimes}
+                      className="text-xs font-medium text-primary-700 hover:text-primary-800 underline underline-offset-2"
+                    >
+                      Clear all
+                    </button>
                   )}
-                </motion.button>
-              );
-            })}
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+
+        {/* Schedule summary */}
+        <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-lg border border-neutral-200 bg-white p-3 text-center">
+            <div className="text-xs text-neutral-500">Days / week</div>
+            <div className="text-xl font-semibold text-neutral-900">{daysSelected || 0}</div>
+          </div>
+          <div className="rounded-lg border border-neutral-200 bg-white p-3 text-center">
+            <div className="text-xs text-neutral-500">Minutes / session</div>
+            <div className="text-xl font-semibold text-neutral-900">{minutesSelected || 0}</div>
+          </div>
+          <div className="rounded-lg border border-neutral-200 bg-white p-3 text-center">
+            <div className="text-xs text-neutral-500">Weekly minutes</div>
+            <div className="text-xl font-semibold text-neutral-900">{weeklyMinutes}</div>
           </div>
         </div>
-      </div>
 
-      <div className="flex justify-between">
-        <Button
-          variant="outline"
-          onClick={onPrev}
-          size="lg"
-          className="px-8"
-        >
-          Back
-        </Button>
-        <Button
-          onClick={onNext}
-          disabled={!canProceed}
-          size="lg"
-          className="px-8"
-        >
-          Continue
-        </Button>
+        <div className="flex justify-between">
+          <Button variant="outline" onClick={onPrev} size="lg" className="px-8">
+            Back
+          </Button>
+          <Button onClick={onNext} disabled={!canProceed} size="lg" className="px-8">
+            Continue
+          </Button>
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  }
+);

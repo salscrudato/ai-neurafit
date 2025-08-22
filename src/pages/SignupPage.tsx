@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Button } from '../components/ui/Button';
@@ -6,11 +6,12 @@ import { Input } from '../components/ui/Input';
 import { AuthService } from '../services/authService';
 import { useAuthStore } from '../store/authStore';
 
-type Errors = Partial<Record<'displayName' | 'email' | 'password' | 'confirmPassword', string>>;
+type Errors = Partial<
+  Record<'displayName' | 'email' | 'password' | 'confirmPassword', string>
+>;
 
-const emailRegex =
-  // simple, robust-enough email check for client side
-  /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+// Simple, robust-enough email check for client side
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 function scorePassword(pw: string) {
   let score = 0;
@@ -29,6 +30,47 @@ function scorePassword(pw: string) {
   return map[clamped];
 }
 
+// Gentle mapping of auth error codes -> user-safe copy
+function mapAuthError(err: any): string {
+  const code = err?.code || err?.error?.code || '';
+  switch (code) {
+    case 'auth/email-already-in-use':
+      return 'That email is already in use. Try signing in instead.';
+    case 'auth/invalid-email':
+      return 'Enter a valid email address.';
+    case 'auth/weak-password':
+      return 'Please choose a stronger password.';
+    case 'auth/network-request-failed':
+      return 'Network error. Check your connection and try again.';
+    case 'auth/popup-closed-by-user':
+      return 'Sign‑in window was closed.';
+    default:
+      return err?.message || 'Unable to create account. Please try again.';
+  }
+}
+
+// Mild email domain suggestions to reduce typos
+const domainCorrections: Record<string, string> = {
+  gamil: 'gmail',
+  gmal: 'gmail',
+  hotmial: 'hotmail',
+  hotmil: 'hotmail',
+  outlok: 'outlook',
+  yaho: 'yahoo',
+};
+function suggestEmailDomain(email: string): string | null {
+  const at = email.indexOf('@');
+  if (at < 0) return null;
+  const [local, domainRaw] = [email.slice(0, at), email.slice(at + 1)];
+  const [name, tld = ''] = domainRaw.split('.');
+  if (!name || !tld) return null;
+  const fixedName = domainCorrections[name.toLowerCase()];
+  if (fixedName && fixedName !== name) {
+    return `${local}@${fixedName}.${tld}`;
+  }
+  return null;
+}
+
 export const SignupPage: React.FC = () => {
   const navigate = useNavigate();
   const shouldReduceMotion = useReducedMotion();
@@ -43,10 +85,23 @@ export const SignupPage: React.FC = () => {
   const [errors, setErrors] = useState<Errors>({});
   const [loading, setLoading] = useState(false);
   const [localError, setLocalError] = useState('');
+  const [emailHint, setEmailHint] = useState<string | null>(null);
+  const [capsPassword, setCapsPassword] = useState(false);
+  const [capsConfirm, setCapsConfirm] = useState(false);
 
-  const pwStrength = useMemo(() => scorePassword(formData.password), [formData.password]);
+  const pwStrength = useMemo(
+    () => scorePassword(formData.password),
+    [formData.password],
+  );
 
-  const validateField = (name: keyof typeof formData, value: string): string | undefined => {
+  useEffect(() => {
+    document.title = 'Sign up • NeuraFit';
+  }, []);
+
+  const validateField = (
+    name: keyof typeof formData,
+    value: string,
+  ): string | undefined => {
     switch (name) {
       case 'displayName':
         if (!value.trim()) return 'Full name is required';
@@ -74,7 +129,10 @@ export const SignupPage: React.FC = () => {
       displayName: validateField('displayName', formData.displayName),
       email: validateField('email', formData.email),
       password: validateField('password', formData.password),
-      confirmPassword: validateField('confirmPassword', formData.confirmPassword),
+      confirmPassword: validateField(
+        'confirmPassword',
+        formData.confirmPassword,
+      ),
     };
     setErrors(nextErrors);
     return !Object.values(nextErrors).some(Boolean);
@@ -86,8 +144,26 @@ export const SignupPage: React.FC = () => {
     if (localError) setLocalError('');
     clearError();
 
-    // live-validate on change (soft)
-    setErrors((prev) => ({ ...prev, [name]: validateField(name as keyof typeof formData, value) }));
+    // Live‑validate (soft)
+    setErrors((prev) => ({
+      ...prev,
+      [name]: validateField(name as keyof typeof formData, value),
+    }));
+
+    if (name === 'email') {
+      setEmailHint(suggestEmailDomain(value));
+    }
+  };
+
+  const handlePasswordKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if ('getModifierState' in e) {
+      setCapsPassword((e as any).getModifierState('CapsLock'));
+    }
+  };
+  const handleConfirmKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if ('getModifierState' in e) {
+      setCapsConfirm((e as any).getModifierState('CapsLock'));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -106,7 +182,7 @@ export const SignupPage: React.FC = () => {
       });
       navigate('/onboarding');
     } catch (err: any) {
-      const message = err?.message || 'Unable to create account. Please try again.';
+      const message = mapAuthError(err);
       setLocalError(message);
       setError(message);
     } finally {
@@ -122,14 +198,15 @@ export const SignupPage: React.FC = () => {
       await AuthService.signInWithGoogle();
       navigate('/onboarding');
     } catch (err: any) {
-      const message = err?.message || '';
-      if (message.includes('Redirecting to Google sign-in')) {
-        setLocalError('Redirecting to Google sign-in...');
-        return; // keep loading during redirect
+      const message = mapAuthError(err);
+      // If this is a redirect flow, keep subtle feedback but stop spinning
+      if ((err?.message || '').includes('Redirecting to Google')) {
+        setLocalError('Redirecting to Google sign‑in…');
+      } else {
+        setLocalError(message || 'Google sign‑in failed.');
+        setError(message || 'Google sign‑in failed.');
+        setLoading(false);
       }
-      setLocalError(message || 'Google sign-in failed.');
-      setError(message || 'Google sign-in failed.');
-      setLoading(false);
     }
   };
 
@@ -142,31 +219,61 @@ export const SignupPage: React.FC = () => {
     !Object.values(errors).some(Boolean);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-neutral-50 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Subtle moving gradient accent */}
       <motion.div
-        initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-r from-primary-100 via-cyan-100 to-primary-100 opacity-60 blur-2xl bg-[length:200%_100%]"
+        animate={
+          shouldReduceMotion
+            ? { opacity: 0.4 }
+            : { backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }
+        }
+        transition={
+          shouldReduceMotion
+            ? { duration: 0 }
+            : { duration: 18, repeat: Infinity, ease: 'easeInOut' }
+        }
+      />
+
+      <motion.div
+        initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
         animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.45 }}
         className="max-w-md w-full space-y-8"
       >
         <div className="text-center">
           <Link to="/" className="inline-block">
-            <h1 className="text-3xl font-display font-bold bg-gradient-brand bg-clip-text text-transparent">
+            <h1 className="text-3xl font-display font-bold bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">
               NeuraFit
             </h1>
           </Link>
-          <h2 className="mt-6 text-3xl font-extrabold text-neutral-900">Create your account</h2>
+          <h2 className="mt-6 text-3xl font-extrabold text-neutral-900">
+            Create your account
+          </h2>
           <p className="mt-2 text-sm text-neutral-600">
             Already have an account?{' '}
-            <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500">
+            <Link
+              to="/login"
+              className="font-medium text-primary-600 hover:text-primary-500"
+            >
               Sign in
             </Link>
           </p>
         </div>
 
-        <div className="card">
+        <div className="card relative overflow-hidden">
+          {/* Animated top border accent */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-x-0 -top-px h-[3px] bg-gradient-to-r from-primary-400 via-cyan-400 to-primary-400 bg-[length:200%_100%] animate-gradient"
+          />
           {localError && (
-            <div className="mb-4 p-3 bg-error-50 border border-error-200 rounded-md" role="alert" aria-live="polite">
+            <div
+              className="mb-4 p-3 bg-error-50 border border-error-200 rounded-md"
+              role="alert"
+              aria-live="polite"
+            >
               <p className="text-sm text-error-600">{localError}</p>
             </div>
           )}
@@ -184,18 +291,26 @@ export const SignupPage: React.FC = () => {
               error={errors.displayName}
             />
 
-            <Input
-              label="Email address"
-              id="email"
-              name="email"
-              type="email"
-              placeholder="Enter your email"
-              autoComplete="email"
-              required
-              value={formData.email}
-              onChange={handleChange}
-              error={errors.email}
-            />
+            <div>
+              <Input
+                label="Email address"
+                id="email"
+                name="email"
+                type="email"
+                placeholder="you@example.com"
+                autoComplete="email"
+                required
+                value={formData.email}
+                onChange={handleChange}
+                error={errors.email}
+                aria-describedby={emailHint ? 'email-hint' : undefined}
+              />
+              {emailHint && (
+                <p id="email-hint" className="mt-1 text-xs text-neutral-600">
+                  Did you mean <span className="font-medium">{emailHint}</span>?
+                </p>
+              )}
+            </div>
 
             <div>
               <Input
@@ -208,15 +323,26 @@ export const SignupPage: React.FC = () => {
                 required
                 value={formData.password}
                 onChange={handleChange}
-                helperText="Minimum 6 characters. Add upper/lowercase, numbers, and symbols for a stronger password."
+                onKeyUp={handlePasswordKey}
+                helperText="Min 6 characters. Mix upper/lowercase, numbers, and symbols for a stronger password."
                 error={errors.password}
                 showPasswordToggle
               />
+              {capsPassword && (
+                <p className="mt-1 text-xs text-warning-600">Caps Lock is on.</p>
+              )}
 
-              {/* Password strength meter */}
+              {/* Accessible strength meter */}
               {formData.password && (
                 <div className="mt-2">
-                  <div className="progress-bar" aria-hidden="true">
+                  <div
+                    className="progress-bar"
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={pwStrength.percent}
+                    aria-label="Password strength"
+                  >
                     <div
                       className={`progress-fill ${pwStrength.bar}`}
                       style={{ width: `${pwStrength.percent}%` }}
@@ -229,22 +355,34 @@ export const SignupPage: React.FC = () => {
               )}
             </div>
 
-            <Input
-              label="Confirm Password"
-              id="confirmPassword"
-              name="confirmPassword"
-              type="password"
-              placeholder="Confirm your password"
-              autoComplete="new-password"
-              required
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              error={errors.confirmPassword}
-              showPasswordToggle
-            />
+            <div>
+              <Input
+                label="Confirm Password"
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                placeholder="Confirm your password"
+                autoComplete="new-password"
+                required
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                onKeyUp={handleConfirmKey}
+                error={errors.confirmPassword}
+                showPasswordToggle
+              />
+              {capsConfirm && (
+                <p className="mt-1 text-xs text-warning-600">Caps Lock is on.</p>
+              )}
+            </div>
 
             <div className="space-y-4">
-              <Button type="submit" loading={loading} className="w-full" size="lg" disabled={!formValid}>
+              <Button
+                type="submit"
+                loading={loading}
+                className="w-full"
+                size="lg"
+                disabled={!formValid}
+              >
                 Create Account
               </Button>
 
@@ -253,7 +391,9 @@ export const SignupPage: React.FC = () => {
                   <div className="w-full border-t border-neutral-300" />
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-neutral-500">Or continue with</span>
+                  <span className="px-2 bg-white text-neutral-500">
+                    Or continue with
+                  </span>
                 </div>
               </div>
 
@@ -264,6 +404,7 @@ export const SignupPage: React.FC = () => {
                 loading={loading}
                 className="w-full"
                 size="lg"
+                aria-label="Continue with Google"
               >
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" aria-hidden="true">
                   <path

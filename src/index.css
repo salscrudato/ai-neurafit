@@ -1,7 +1,13 @@
-/* === Fonts === */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* =============================================================================
+   NeuraFit — Modern Design System (Apple/Nike Inspired)
+   - System fonts for native feel
+   - Refined color tokens
+   - Enhanced accessibility
+   - Premium visual hierarchy
+============================================================================= */
+
+/* === System Fonts (Apple/Nike inspired) === */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300..900&display=swap');
 
 /* === Tailwind layers === */
 @tailwind base;
@@ -12,87 +18,141 @@
    BASE
 ---------------------------------------------------------------------------------*/
 @layer base {
-  /* Color & spacing tokens (safe defaults; you can override via Tailwind theme) */
+  /* ---- Modern Design Tokens ---- */
   :root {
-    /* Brand hues (RGB for easy alpha composition) */
-    --nf-primary-500: 99 102 241;   /* indigo-500 */
-    --nf-primary-600: 79 70 229;    /* indigo-600 */
-    --nf-primary-700: 67 56 202;    /* indigo-700 */
-    --nf-accent-500: 6 182 212;     /* cyan-600 */
-    --nf-accent-600: 5 150 105;     /* teal-600 (for depth) */
-    --nf-secondary-500: 168 85 247; /* violet-500 */
-    --nf-brand-500: 59 130 246;     /* blue-500 */
-    --nf-success-500: 16 185 129;   /* emerald-500 */
-    --nf-warning-500: 245 158 11;   /* amber-500 */
-    --nf-error-500: 239 68 68;      /* red-500 */
+    /* Modern brand colors as space-separated RGB */
+    --nf-primary-500: 100 116 139;   /* slate-500 */
+    --nf-primary-600: 71 85 105;     /* slate-600 */
+    --nf-primary-700: 51 65 85;      /* slate-700 */
+    --nf-energy-500: 249 115 22;     /* orange-500 */
+    --nf-energy-600: 234 88 12;      /* orange-600 */
+    --nf-success-500: 34 197 94;     /* green-500 */
+    --nf-success-600: 22 163 74;     /* green-600 */
+    --nf-warning-500: 245 158 11;    /* amber-500 */
+    --nf-error-500: 239 68 68;       /* red-500 */
 
-    --space-layout-sm: 0.75rem;
-    --space-layout-md: 1.25rem;
-    --space-layout-lg: 2rem;
+    /* Modern font stacks - Apple/Nike inspired */
+    --font-sans: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+    --font-body: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
+    --font-mono: 'SF Mono', Monaco, 'JetBrains Mono', Menlo, Consolas, monospace;
+
+    /* Refined spacing system */
+    --space-xs: 0.5rem;
+    --space-sm: 0.75rem;
+    --space-md: 1rem;
+    --space-lg: 1.5rem;
+    --space-xl: 2rem;
+    --space-2xl: 3rem;
+
+    /* Modern shadows */
+    --shadow-subtle: 0 1px 3px 0 rgba(0, 0, 0, 0.06);
+    --shadow-elevated: 0 4px 16px 0 rgba(0, 0, 0, 0.08);
+    --shadow-premium: 0 8px 32px 0 rgba(0, 0, 0, 0.12);
+
+    /* System preferences */
+    color-scheme: light dark;
   }
 
+  /* Dark theme support */
+  [data-theme="dark"] {
+    --nf-primary-500: 148 163 184;   /* slate-400 */
+    --nf-primary-600: 100 116 139;   /* slate-500 */
+    --nf-primary-700: 71 85 105;     /* slate-600 */
+    color-scheme: dark;
+  }
+
+  /* ---- Modern base reset (complements Tailwind preflight) ---- */
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; }
+
   html {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: var(--font-sans);
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
     scroll-behavior: smooth;
   }
 
   body {
-    @apply bg-gradient-background text-foreground antialiased;
+    @apply bg-white text-foreground antialiased;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
-    font-family: 'Inter', system-ui, sans-serif;
-    transition: background-color 0.3s ease, color 0.3s ease;
+    font-family: var(--font-body);
+    font-synthesis: none;
+    accent-color: rgb(var(--nf-energy-500));
+    transition: background-color 0.2s ease, color 0.2s ease;
+    font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
   }
 
+  /* Modern font helpers */
+  .font-display { font-family: var(--font-sans); font-weight: 700; }
+  .font-body { font-family: var(--font-body); }
+  .font-mono { font-family: var(--font-mono); }
 
+  /* Modern selection styling */
+  ::selection {
+    background: rgb(var(--nf-energy-500) / 0.15);
+    color: inherit;
+  }
 
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { @apply bg-neutral-100; }
+  /* Refined scrollbars */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-neutral-50; }
   ::-webkit-scrollbar-thumb { @apply bg-neutral-300 rounded-full; }
   ::-webkit-scrollbar-thumb:hover { @apply bg-neutral-400; }
+  html { scrollbar-width: thin; scrollbar-color: rgb(203 213 225) rgb(248 250 252); }
 
-  /* Focus styles */
-  *:focus { outline: 2px solid transparent; outline-offset: 2px; }
-  *:focus-visible { @apply ring-2 ring-primary-500 ring-offset-2; }
+  /* Focus: don’t suppress outlines globally; style keyboard focus clearly */
+  :focus { outline: none; }
+  :focus-visible { @apply ring-2 ring-primary-500 ring-offset-2; }
 
   /* High contrast mode */
-  @media (prefers-contrast: high) {
+  @media (prefers-contrast: more), (forced-colors: active) {
     .card { @apply border-2 border-neutral-900; }
     .btn-secondary, .input-field { border-width: 2px; border-color: currentColor; }
     .text-gradient, .text-gradient-primary, .text-gradient-accent {
-      background: none; color: currentColor; -webkit-background-clip: unset; background-clip: unset;
+      background: none; color: currentColor; -webkit-background-clip: initial; background-clip: initial;
     }
   }
 
-  /* Reduced motion (applies once globally) */
+  /* Reduced motion */
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
     .animate-pulse, .animate-bounce, .animate-spin, .animate-ping { animation: none !important; }
     .animate-on-scroll { opacity: 1; transform: none; }
   }
 
-  /* Background tokens used via @apply elsewhere */
-  .bg-gradient-background {
-    background-image:
-      radial-gradient(60% 80% at 20% 0%, rgba(var(--nf-primary-500)/0.10), transparent 60%),
-      radial-gradient(50% 70% at 100% 20%, rgba(var(--nf-accent-500)/0.12), transparent 60%),
-      linear-gradient(180deg, #fafafa 0%, #ffffff 60%, #f8fafc 100%);
+  /* Reduced data: dampen heavy decorative backgrounds */
+  @media (prefers-reduced-data: reduce) {
+    .bg-mesh-gradient, .bg-gradient-background, .card-gradient, .card-gradient-accent, .card-gradient-secondary {
+      background-image: none !important;
+    }
   }
 
+  /* Background tokens used via @apply elsewhere (Color4 syntax fixed) */
+  .bg-gradient-background {
+    background-image:
+      radial-gradient(60% 80% at 20% 0%, rgb(var(--nf-primary-500) / 0.10), transparent 60%),
+      radial-gradient(50% 70% at 100% 20%, rgb(var(--nf-accent-500) / 0.12), transparent 60%),
+      linear-gradient(180deg, #fafafa 0%, #ffffff 60%, #f8fafc 100%);
+  }
 }
 
 /* --------------------------------------------------------------------------------
    UTILITIES
 ---------------------------------------------------------------------------------*/
 @layer utilities {
-  /* Mesh + hero gradients (used in hero/landing/layout) */
+  /* Mesh + hero gradients */
   .bg-mesh-gradient {
     background-image:
-      radial-gradient(1000px 500px at -10% -20%, rgba(var(--nf-primary-500)/0.20), transparent 60%),
-      radial-gradient(800px 400px at 110% 0%, rgba(var(--nf-accent-500)/0.18), transparent 60%);
+      radial-gradient(1000px 500px at -10% -20%, rgb(var(--nf-primary-500) / 0.20), transparent 60%),
+      radial-gradient(800px 400px at 110% 0%, rgb(var(--nf-accent-500) / 0.18), transparent 60%);
     background-repeat: no-repeat;
   }
   .bg-gradient-hero {
@@ -111,7 +171,7 @@
     background-image: linear-gradient(135deg, rgb(var(--nf-brand-500)) 0%, rgb(var(--nf-primary-500)) 100%);
   }
 
-  /* Fitness gradients for workout types */
+  /* Fitness gradients */
   .bg-gradient-cardio { background-image: linear-gradient(135deg, #ef4444, #f97316); }
   .bg-gradient-strength { background-image: linear-gradient(135deg, #22c55e, #16a34a); }
   .bg-gradient-flexibility { background-image: linear-gradient(135deg, #06b6d4, #0ea5e9); }
@@ -128,7 +188,7 @@
   .text-gradient-secondary { background-image: linear-gradient(90deg, rgb(var(--nf-secondary-500)), rgb(147 51 234)); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .text-gradient-brand { background-image: linear-gradient(90deg, rgb(var(--nf-brand-500)), rgb(var(--nf-primary-500))); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
-  /* Fluid type scale (used by heading/body utilities) */
+  /* Fluid type scale */
   .text-display-xl { font-size: clamp(2.75rem, 1.6rem + 3vw, 5rem); line-height: 1.05; }
   .text-display-lg { font-size: clamp(2.25rem, 1.2rem + 2.5vw, 3.75rem); line-height: 1.08; }
   .text-display-md { font-size: clamp(1.75rem, 0.9rem + 2vw, 3rem); line-height: 1.12; }
@@ -151,9 +211,9 @@
   .shadow-hard { box-shadow: 0 10px 40px rgba(0,0,0,0.25); }
   .shadow-glass { box-shadow: 0 10px 30px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.2); }
   .shadow-glow { box-shadow: 0 0 0 0 rgba(0,0,0,0); }
-  .shadow-glow-primary { box-shadow: 0 10px 30px rgba(var(--nf-primary-600)/0.35), 0 0 0 1px rgba(var(--nf-primary-600)/0.10); }
-  .shadow-glow-accent  { box-shadow: 0 10px 30px rgba(var(--nf-accent-500)/0.35), 0 0 0 1px rgba(var(--nf-accent-500)/0.10); }
-  .shadow-glow-secondary { box-shadow: 0 10px 30px rgba(var(--nf-secondary-500)/0.35), 0 0 0 1px rgba(var(--nf-secondary-500)/0.10); }
+  .shadow-glow-primary { box-shadow: 0 10px 30px rgb(var(--nf-primary-600) / 0.35), 0 0 0 1px rgb(var(--nf-primary-600) / 0.10); }
+  .shadow-glow-accent  { box-shadow: 0 10px 30px rgb(var(--nf-accent-500) / 0.35), 0 0 0 1px rgb(var(--nf-accent-500) / 0.10); }
+  .shadow-glow-secondary { box-shadow: 0 10px 30px rgb(var(--nf-secondary-500) / 0.35), 0 0 0 1px rgb(var(--nf-secondary-500) / 0.10); }
   .shadow-cardio { box-shadow: 0 10px 30px rgba(239,68,68,0.30); }
   .shadow-strength { box-shadow: 0 10px 30px rgba(34,197,94,0.30); }
   .shadow-flexibility { box-shadow: 0 10px 30px rgba(6,182,212,0.30); }
@@ -173,7 +233,7 @@
   @keyframes workoutPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
   .animate-workout-pulse { animation: workoutPulse 1.5s ease-in-out infinite; }
 
-  @keyframes restBreathe { 0%,100%{letter-spacing:0px} 50%{letter-spacing:1px} }
+  @keyframes restBreathe { 0%,100%{letter-spacing:0} 50%{letter-spacing:0.5px} }
   .animate-rest-breathe { animation: restBreathe 3s ease-in-out infinite; }
 
   /* Safe area helpers */
@@ -181,16 +241,21 @@
   .safe-area-top { padding-top: env(safe-area-inset-top); }
   .h-safe-bottom { height: env(safe-area-inset-bottom); }
 
-  /* Fluid paddings for containers (used by layout utilities) */
+  /* Fluid paddings */
   .px-fluid-sm { padding-left: clamp(1rem, 4vw, 1.5rem); padding-right: clamp(1rem, 4vw, 1.5rem); }
   .px-layout-md { padding-left: var(--space-layout-md); padding-right: var(--space-layout-md); }
   .px-layout-lg { padding-left: var(--space-layout-lg); padding-right: var(--space-layout-lg); }
 
-  /* Grid templates (no Tailwind config needed) */
+  /* Grid templates */
   .grid-auto-fit { display:grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: var(--space-layout-md); }
   .grid-auto-fill { display:grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: var(--space-layout-md); }
   .grid-sidebar { display:grid; grid-template-columns: 280px 1fr; gap: var(--space-layout-lg); }
   .grid-holy-grail { display:grid; grid-template-columns: 1fr minmax(0, 800px) 1fr; gap: var(--space-layout-md); }
+
+  /* Visibility & performance helpers */
+  .cv-auto { content-visibility: auto; contain-intrinsic-size: 600px 800px; } /* tune per container */
+  .break-anywhere { overflow-wrap: anywhere; word-break: break-word; }
+  .hyphens-auto { hyphens: auto; }
 
   /* Screen-reader helpers */
   .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
@@ -218,33 +283,27 @@
    COMPONENTS
 ---------------------------------------------------------------------------------*/
 @layer components {
-  /* Buttons */
+  /* Modern Button System - Apple/Nike inspired */
   .btn-primary {
-    @apply bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 shadow-soft hover:shadow-medium disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-semibold py-3 px-6 rounded-2xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-energy {
+    @apply bg-energy-500 hover:bg-energy-600 active:bg-energy-700 text-white font-semibold py-3 px-6 rounded-2xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-energy-500 focus:ring-offset-2 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .btn-secondary {
-    @apply bg-background-secondary hover:bg-background-tertiary active:bg-neutral-300 text-foreground font-semibold py-3 px-6 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neutral-500 focus:ring-offset-2 shadow-soft hover:shadow-medium border border-border;
+    @apply bg-white hover:bg-neutral-50 active:bg-neutral-100 text-foreground font-semibold py-3 px-6 rounded-2xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 shadow-sm hover:shadow-md border border-neutral-200;
   }
   .btn-outline {
-    @apply border-2 border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-white active:bg-primary-700 font-semibold py-3 px-6 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 shadow-soft hover:shadow-medium bg-transparent;
-  }
-  .btn-accent {
-    @apply bg-accent-500 hover:bg-accent-600 active:bg-accent-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-offset-2 shadow-soft hover:shadow-medium;
+    @apply border-2 border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-white active:bg-primary-700 font-semibold py-3 px-6 rounded-2xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 bg-transparent;
   }
   .btn-ghost {
-    @apply text-foreground-secondary hover:text-foreground hover:bg-background-secondary active:bg-background-tertiary font-medium py-3 px-6 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neutral-500 focus:ring-offset-2;
+    @apply text-foreground-secondary hover:text-foreground hover:bg-neutral-100 active:bg-neutral-200 font-medium py-3 px-6 rounded-2xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
   }
   .btn-success {
-    @apply bg-success-500 hover:bg-success-600 active:bg-success-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-success-500 focus:ring-offset-2 shadow-soft hover:shadow-medium;
-  }
-  .btn-warning {
-    @apply bg-warning-500 hover:bg-warning-600 active:bg-warning-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-warning-500 focus:ring-offset-2 shadow-soft hover:shadow-medium;
-  }
-  .btn-error {
-    @apply bg-error-500 hover:bg-error-600 active:bg-error-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-error-500 focus:ring-offset-2 shadow-soft hover:shadow-medium;
+    @apply bg-success-500 hover:bg-success-600 active:bg-success-700 text-white font-semibold py-3 px-6 rounded-2xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-success-500 focus:ring-offset-2 shadow-sm hover:shadow-md;
   }
   .btn-glass {
-    @apply bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 shadow-glass;
+    @apply bg-white/80 hover:bg-white/90 backdrop-blur-md border border-white/30 text-foreground font-semibold py-3 px-6 rounded-2xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 shadow-glass;
   }
 
   /* Inputs */
@@ -261,7 +320,7 @@
   .card-elevated { @apply bg-background rounded-3xl shadow-elevated border border-border/30 p-6 transition-all duration-300; }
   .card-glass { @apply bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl shadow-glass p-6 transition-all duration-300; }
 
-  /* Gradient cards (single source of truth) */
+  /* Gradient cards (Color4 syntax fixed) */
   .card-gradient { @apply text-white rounded-3xl p-6 transition-all duration-300 shadow-hard; background-image: linear-gradient(135deg, rgb(var(--nf-primary-500)), rgb(var(--nf-primary-700))); }
   .card-gradient-accent { @apply text-white rounded-3xl p-6 transition-all duration-300 shadow-hard; background-image: linear-gradient(135deg, rgb(var(--nf-accent-500)), rgb(14 165 233)); }
   .card-gradient-secondary { @apply text-white rounded-3xl p-6 transition-all duration-300 shadow-hard; background-image: linear-gradient(135deg, rgb(var(--nf-secondary-500)), rgb(147 51 234)); }
@@ -305,11 +364,12 @@
 
   /* Progress bar */
   .progress-bar { @apply w-full bg-neutral-200 rounded-full h-2 overflow-hidden; }
-  .progress-fill { @apply h-full rounded-full transition-all duration-300; background-image: linear-gradient(90deg, rgb(var(--nf-primary-500)), rgb(var(--nf-primary-600))); }
+  .progress-fill { @apply h-full rounded-full transition-all duration-300; background-image: linear-gradient(90deg, rgb(var(--nf-energy-500)), rgb(var(--nf-energy-600))); }
 
-  /* Badge primitives */
+  /* Modern badges */
   .badge { @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium; }
   .badge-primary  { @apply badge bg-primary-100 text-primary-800; }
+  .badge-energy   { @apply badge bg-energy-100 text-energy-800; }
   .badge-success  { @apply badge bg-success-100 text-success-800; }
   .badge-warning  { @apply badge bg-warning-100 text-warning-800; }
   .badge-error    { @apply badge bg-error-100 text-error-800; }
@@ -361,8 +421,6 @@
   .progress-accessible { position: relative; }
   .progress-accessible::after { content: attr(aria-valuenow) '% complete'; @apply sr-only; }
 
-
-
   /* Workout components */
   .workout-card { @apply card relative overflow-hidden group cursor-pointer transition-all duration-300; }
   .workout-card:hover { @apply shadow-elevated-lg -translate-y-1 scale-[1.02]; }
@@ -372,7 +430,7 @@
   .workout-card-intensity-extreme { @apply border-l-4 border-fitness-hiit-500; background-image: linear-gradient(90deg, rgba(245,158,11,0.08), #fff); }
 
   .exercise-card { @apply card p-6 bg-white border border-neutral-200 hover:border-primary-300 transition-all duration-300; }
-  .exercise-card-active { @apply border-primary-500; background-image: linear-gradient(90deg, rgba(var(--nf-primary-500)/0.08), #fff); @apply shadow-glow-primary; }
+  .exercise-card-active { @apply border-primary-500; background-image: linear-gradient(90deg, rgb(var(--nf-primary-500) / 0.08), #fff); @apply shadow-glow-primary; }
 
   .progress-ring { @apply relative inline-flex items-center justify-center; }
   .progress-ring-background { @apply absolute inset-0 rounded-full border-4 border-neutral-200; }
@@ -423,14 +481,12 @@
   .icon, .badge, .button { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 }
 
-
-
 /* Print */
 @media print {
   .no-print { display: none !important; }
   .print-only { display: block !important; }
   * { background: transparent !important; color: black !important; box-shadow: none !important; text-shadow: none !important; }
   a, a:visited { text-decoration: underline; }
-  a[href]:after { content: " (" attr(href) ")"; }
+  a[href]::after { content: " (" attr(href) ")"; }
   .card { border: 1px solid #000; page-break-inside: avoid; }
 }

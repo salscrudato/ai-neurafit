@@ -11,6 +11,7 @@ interface CardProps {
     | 'gradient'
     | 'glass'
     | 'elevated'
+    | 'energy'
     | 'workout'
     | 'exercise'
     | 'achievement';
@@ -100,19 +101,21 @@ export const Card: React.FC<CardProps> = ({
 
   const variantMap: Record<NonNullable<CardProps['variant']>, string> = {
     default:
-      'bg-background border border-border/50 shadow-medium hover:border-neutral-300/70',
+      'bg-white border border-neutral-200 shadow-sm hover:shadow-md hover:border-neutral-300',
     gradient:
-      'bg-gradient-primary text-white shadow-hard shadow-glow-primary',
+      'bg-gradient-primary text-white shadow-md',
     glass:
-      'backdrop-blur-md bg-white/10 border border-white/20 text-white shadow-glass',
+      'backdrop-blur-md bg-white/80 border border-white/30 shadow-glass',
     elevated:
-      'bg-background border border-border/30 shadow-elevated',
+      'bg-white border border-neutral-100 shadow-elevated',
+    energy:
+      'bg-gradient-energy text-white shadow-md',
     workout:
-      'bg-background border-l-4 border-primary-500 shadow-medium hover:shadow-hard hover:border-primary-600',
+      'bg-white border-l-4 border-energy-500 shadow-sm hover:shadow-md hover:border-energy-600',
     exercise:
-      'bg-gradient-to-r from-neutral-50 to-white border border-neutral-200 hover:from-primary-50/60 hover:border-primary-300',
+      'bg-white border border-neutral-200 hover:border-primary-300 shadow-sm hover:shadow-md',
     achievement:
-      'bg-gradient-to-br from-yellow-50 to-white border border-yellow-200 shadow-achievement',
+      'bg-gradient-to-br from-success-50 to-white border border-success-200 shadow-sm',
   };
 
   const hoverFx = hover ? 'hover:-translate-y-1 hover:scale-[1.01] hover:shadow-hard' : '';

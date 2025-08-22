@@ -10,7 +10,7 @@ type MotivationVariant =
   | 'energy' | 'power' | 'zen' | 'achievement';
 
 export type ButtonVariant =
-  | 'primary' | 'secondary' | 'outline' | 'ghost' | 'accent' | 'success' | 'warning' | 'error' | 'gradient' | 'glass'
+  | 'primary' | 'secondary' | 'outline' | 'ghost' | 'energy' | 'success' | 'warning' | 'error' | 'gradient' | 'glass'
   | FitnessVariant | IntensityVariant | MotivationVariant;
 
 export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
@@ -18,7 +18,6 @@ export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 export interface ButtonProps
   extends Omit<
     React.ButtonHTMLAttributes<HTMLButtonElement>,
-    // Framer merges these; omit to avoid TS conflicts with HTMLButtonElement
     'onDrag' | 'onDragEnd' | 'onDragStart' | 'onAnimationStart' | 'onAnimationEnd'
   > {
   variant?: ButtonVariant;
@@ -29,90 +28,113 @@ export interface ButtonProps
   iconPosition?: 'left' | 'right';
   glow?: boolean;
   pulse?: boolean;
-  /** Predefined animations (maps to Tailwind `animate-*` classes) */
   animation?: 'none' | 'bounce' | 'pulse' | 'wiggle' | 'scale' | 'workout-pulse' | 'motivation-bounce';
-  /** Toggle focus ring utilities */
   focusRing?: boolean;
-  /** Optional text to show while loading (falls back to children) */
   loadingText?: string;
 }
 
 /** lightweight class combiner */
 const cn = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ');
 
-/** Base visual styles (no focus ring here to keep `focusRing` togglable) */
+/**
+ * Light-theme, subtle-glow base styles:
+ * - Softer shadows (md → lg on hover)
+ * - Lighter surfaces (white/neutral backgrounds)
+ * - Reduced intensity on gradients and glass
+ */
 const VARIANT_BASE: Record<ButtonVariant, string> = {
-  // Core
-  primary:   'bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white shadow-medium hover:shadow-hard hover:shadow-glow-primary',
-  secondary: 'bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300 text-neutral-900 shadow-medium hover:shadow-hard border border-neutral-200',
-  outline:   'border-2 border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-white active:bg-primary-700 shadow-medium hover:shadow-hard hover:shadow-glow-primary backdrop-blur-sm',
-  ghost:     'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/80 active:bg-neutral-200/80 backdrop-blur-sm',
-  accent:    'bg-accent-500 hover:bg-accent-600 active:bg-accent-700 text-white shadow-medium hover:shadow-hard hover:shadow-glow-accent',
-  success:   'bg-success-500 hover:bg-success-600 active:bg-success-700 text-white shadow-medium hover:shadow-hard',
-  warning:   'bg-warning-500 hover:bg-warning-600 active:bg-warning-700 text-white shadow-medium hover:shadow-hard',
-  error:     'bg-error-500 hover:bg-error-600 active:bg-error-700 text-white shadow-medium hover:shadow-hard',
-  gradient:  'bg-gradient-primary hover:opacity-90 text-white shadow-medium hover:shadow-hard hover:shadow-glow-primary',
-  glass:     'bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white shadow-glass',
+  // Core (light theme)
+  primary:
+    'bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white shadow-md hover:shadow-lg',
+  secondary:
+    'bg-white hover:bg-neutral-50 active:bg-neutral-100 text-neutral-900 border border-neutral-200 shadow-sm hover:shadow-md',
+  outline:
+    'border-2 border-primary-500 text-primary-600 hover:bg-primary-50 active:bg-primary-100 shadow-sm hover:shadow-md',
+  ghost:
+    'text-neutral-700 hover:text-neutral-900 hover:bg-neutral-100/70 active:bg-neutral-200/70',
 
-  // Fitness
-  cardio:      'bg-gradient-cardio hover:opacity-90 text-white shadow-cardio hover:shadow-cardio-lg',
-  strength:    'bg-gradient-strength hover:opacity-90 text-white shadow-strength hover:shadow-strength-lg',
-  flexibility: 'bg-gradient-flexibility hover:opacity-90 text-white shadow-flexibility hover:shadow-flexibility-lg',
-  recovery:    'bg-gradient-recovery hover:opacity-90 text-white shadow-recovery hover:shadow-recovery-lg',
-  hiit:        'bg-gradient-hiit hover:opacity-90 text-white shadow-hiit hover:shadow-hiit-lg',
-  yoga:        'bg-gradient-yoga hover:opacity-90 text-white shadow-yoga hover:shadow-yoga-lg',
-  pilates:     'bg-gradient-pilates hover:opacity-90 text-white shadow-pilates hover:shadow-pilates-lg',
+  success:
+    'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-md hover:shadow-lg',
+  warning:
+    'bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white shadow-md hover:shadow-lg',
+  error:
+    'bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white shadow-md hover:shadow-lg',
 
-  // Intensity (soft → full on hover)
-  'intensity-low':     'bg-gradient-flexibility-soft hover:bg-gradient-flexibility text-fitness-flexibility-800 hover:text-white shadow-flexibility',
-  'intensity-medium':  'bg-gradient-strength-soft hover:bg-gradient-strength text-fitness-strength-800 hover:text-white shadow-strength',
-  'intensity-high':    'bg-gradient-cardio-soft hover:bg-gradient-cardio text-fitness-cardio-800 hover:text-white shadow-cardio',
-  'intensity-extreme': 'bg-gradient-hiit-soft hover:bg-gradient-hiit text-fitness-hiit-800 hover:text-white shadow-hiit',
+  // Subtle gradient (softer than before)
+  gradient:
+    'bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white shadow-md hover:shadow-lg',
 
-  // Motivation
-  energy:      'bg-gradient-energy hover:opacity-90 text-white shadow-energy animate-energy-wave bg-[length:200%_200%]',
-  power:       'bg-gradient-power hover:opacity-90 text-white shadow-power',
-  zen:         'bg-gradient-zen hover:opacity-90 text-white shadow-yoga',
-  achievement: 'bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white shadow-achievement',
+  // Light glass (readable on light backgrounds)
+  glass:
+    'bg-white/60 hover:bg-white/75 backdrop-blur-sm border border-neutral-200 text-neutral-900 shadow-sm hover:shadow-md',
+
+  // Fitness (softened)
+  cardio:      'bg-gradient-to-r from-rose-500 to-orange-500 hover:opacity-95 text-white shadow-md hover:shadow-lg',
+  strength:    'bg-gradient-to-r from-emerald-500 to-green-600 hover:opacity-95 text-white shadow-md hover:shadow-lg',
+  flexibility: 'bg-gradient-to-r from-cyan-500 to-sky-600 hover:opacity-95 text-white shadow-md hover:shadow-lg',
+  recovery:    'bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-95 text-white shadow-md hover:shadow-lg',
+  hiit:        'bg-gradient-to-r from-amber-500 to-rose-600 hover:opacity-95 text-white shadow-md hover:shadow-lg',
+  yoga:        'bg-gradient-to-r from-violet-500 to-cyan-400 hover:opacity-95 text-white shadow-md hover:shadow-lg',
+  pilates:     'bg-gradient-to-r from-pink-400 to-violet-500 hover:opacity-95 text-white shadow-md hover:shadow-lg',
+
+  // Intensity (soft base → full palette on hover)
+  'intensity-low':
+    'bg-cyan-50 text-cyan-800 hover:bg-gradient-to-r hover:from-cyan-500 hover:to-sky-600 hover:text-white shadow-sm hover:shadow-md',
+  'intensity-medium':
+    'bg-emerald-50 text-emerald-800 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-green-600 hover:text-white shadow-sm hover:shadow-md',
+  'intensity-high':
+    'bg-rose-50 text-rose-800 hover:bg-gradient-to-r hover:from-rose-500 hover:to-orange-500 hover:text-white shadow-sm hover:shadow-md',
+  'intensity-extreme':
+    'bg-amber-50 text-amber-800 hover:bg-gradient-to-r hover:from-amber-500 hover:to-rose-600 hover:text-white shadow-sm hover:shadow-md',
+
+  // Modern energy variant - Nike inspired
+  energy:
+    'bg-energy-500 hover:bg-energy-600 active:bg-energy-700 text-white shadow-sm hover:shadow-md',
+  power:
+    'bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white shadow-md hover:shadow-lg',
+  zen:
+    'bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 text-white shadow-md hover:shadow-lg',
+  achievement:
+    'bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-500 hover:to-amber-600 text-white shadow-md hover:shadow-lg',
 };
 
-/** Focus ring color per variant (opt‑in via `focusRing`) */
+/** Focus ring color per variant (light accent ring) */
 const VARIANT_RING: Partial<Record<ButtonVariant, string>> = {
-  primary: 'focus-visible:ring-primary-500',
-  secondary: 'focus-visible:ring-neutral-500',
-  outline: 'focus-visible:ring-primary-500',
-  ghost: 'focus-visible:ring-neutral-500',
-  accent: 'focus-visible:ring-accent-500',
-  success: 'focus-visible:ring-success-500',
-  warning: 'focus-visible:ring-warning-500',
-  error: 'focus-visible:ring-error-500',
-  gradient: 'focus-visible:ring-primary-500',
-  glass: 'focus-visible:ring-white/50',
+  primary: 'focus-visible:ring-primary-400',
+  secondary: 'focus-visible:ring-neutral-300',
+  outline: 'focus-visible:ring-primary-400',
+  ghost: 'focus-visible:ring-neutral-300',
+  energy: 'focus-visible:ring-energy-400',
+  success: 'focus-visible:ring-success-400',
+  warning: 'focus-visible:ring-amber-400',
+  error: 'focus-visible:ring-rose-400',
+  gradient: 'focus-visible:ring-primary-400',
+  glass: 'focus-visible:ring-neutral-300',
 
-  cardio: 'focus-visible:ring-fitness-cardio-500',
-  strength: 'focus-visible:ring-fitness-strength-500',
-  flexibility: 'focus-visible:ring-fitness-flexibility-500',
-  recovery: 'focus-visible:ring-fitness-recovery-500',
-  hiit: 'focus-visible:ring-fitness-hiit-500',
-  yoga: 'focus-visible:ring-fitness-yoga-500',
-  pilates: 'focus-visible:ring-fitness-pilates-500',
+  cardio: 'focus-visible:ring-rose-300',
+  strength: 'focus-visible:ring-emerald-300',
+  flexibility: 'focus-visible:ring-cyan-300',
+  recovery: 'focus-visible:ring-teal-300',
+  hiit: 'focus-visible:ring-amber-300',
+  yoga: 'focus-visible:ring-violet-300',
+  pilates: 'focus-visible:ring-pink-300',
 
-  'intensity-low': 'focus-visible:ring-fitness-flexibility-500',
-  'intensity-medium': 'focus-visible:ring-fitness-strength-500',
-  'intensity-high': 'focus-visible:ring-fitness-cardio-500',
-  'intensity-extreme': 'focus-visible:ring-fitness-hiit-500',
+  'intensity-low': 'focus-visible:ring-cyan-300',
+  'intensity-medium': 'focus-visible:ring-emerald-300',
+  'intensity-high': 'focus-visible:ring-rose-300',
+  'intensity-extreme': 'focus-visible:ring-amber-300',
 
-  energy: 'focus-visible:ring-orange-500',
-  power: 'focus-visible:ring-red-500',
-  zen: 'focus-visible:ring-green-500',
-  achievement: 'focus-visible:ring-yellow-500',
+
+  power: 'focus-visible:ring-red-300',
+  zen: 'focus-visible:ring-teal-300',
+  achievement: 'focus-visible:ring-amber-300',
 };
 
 /** Height/spacing are sized; icon gets its own scale */
 const SIZE_ROOT: Record<ButtonSize, string> = {
   xs: 'h-8 px-3 text-xs',
   sm: 'h-9 px-4 text-sm',
-  md: 'h-11 px-5 text-base', // 44px touch target
+  md: 'h-11 px-5 text-base', // ≥44px touch target
   lg: 'h-12 px-6 text-lg',
   xl: 'h-14 px-7 text-xl',
 };
@@ -148,22 +170,29 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   const isIconOnly = !!icon && !children;
   const shouldReduceMotion = useReducedMotion();
 
-  const motionHover = !shouldReduceMotion && !disabled && !loading ? { scale: 1.02, y: -1 } : undefined;
-  const motionTap = !shouldReduceMotion && !disabled && !loading ? { scale: 0.98 } : undefined;
+  // Softer motion
+  const motionHover =
+    !shouldReduceMotion && !disabled && !loading ? { scale: 1.01, y: -0.5 } : undefined;
+  const motionTap =
+    !shouldReduceMotion && !disabled && !loading ? { scale: 0.985 } : undefined;
+
+  // Subtle glow: gentle primary-tinted drop shadow (no neon)
+  const subtleGlow =
+    glow &&
+    'shadow-lg shadow-primary-500/10 hover:shadow-primary-500/15 hover:shadow-xl';
 
   const focusClasses = focusRing
     ? cn('focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2', VARIANT_RING[variant])
     : 'focus-visible:ring-0 focus-visible:ring-offset-0';
 
   const root = cn(
-    // base
-    'relative inline-flex items-center justify-center font-semibold rounded-2xl transition-all duration-300',
+    'relative inline-flex items-center justify-center font-semibold rounded-2xl transition-all duration-200',
     'disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden group touch-manipulation select-none',
     VARIANT_BASE[variant],
     SIZE_ROOT[size],
     focusClasses,
     fullWidth && 'w-full',
-    glow && 'animate-glow',
+    subtleGlow,
     pulse && 'animate-workout-pulse',
     animation !== 'none' && `animate-${animation}`,
     isIconOnly && 'aspect-square px-0',
@@ -173,7 +202,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   const iconCls = cn(
     SIZE_ICON[size],
     isIconOnly ? '' : iconPosition === 'left' ? 'mr-2' : 'ml-2',
-    'transition-transform duration-300 group-hover:scale-110'
+    'transition-transform duration-200 group-hover:scale-105'
   );
 
   const renderIcon = (node: ReactNode) => {
@@ -196,8 +225,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       data-loading={loading ? '' : undefined}
       {...props}
     >
-      {/* sheen / shimmer */}
-      <div className="pointer-events-none absolute inset-0 -top-1 -bottom-1 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 group-hover:animate-shimmer transition-opacity duration-300" />
+      {/* Subtle sheen (lighter & only on hover) */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
 
       {/* content */}
       <span className="relative z-10 inline-flex items-center">
@@ -209,11 +238,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         ) : (
           <>
             {icon && iconPosition === 'left' && renderIcon(icon)}
-            {children && <span className="transition-all duration-300 group-hover:tracking-wide">{children}</span>}
+            {children && <span className="transition-all duration-200 group-hover:tracking-wide">{children}</span>}
             {icon && iconPosition === 'right' && renderIcon(icon)}
-            {isIconOnly && !props['aria-label'] && (
-              <span className="sr-only">Button</span>
-            )}
+            {isIconOnly && !props['aria-label'] && <span className="sr-only">Button</span>}
           </>
         )}
       </span>
@@ -221,7 +248,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   );
 });
 
-/* Convenience wrappers */
+/* Convenience wrappers (kept but with gentler styling by virtue of base changes) */
 export const WorkoutButton: React.FC<Omit<ButtonProps, 'variant'> & { workoutType: FitnessVariant }> = ({ workoutType, ...props }) => (
   <Button {...props} variant={workoutType} />
 );
@@ -232,7 +259,7 @@ export const IntensityButton: React.FC<Omit<ButtonProps, 'variant'> & { intensit
 }) => <Button {...props} variant={`intensity-${intensity}` as IntensityVariant} />;
 
 export const StartWorkoutButton: React.FC<Omit<ButtonProps, 'variant' | 'glow' | 'pulse'>> = (props) => (
-  <Button {...props} variant="energy" glow pulse size="lg" />
+  <Button {...props} variant="energy" glow size="lg" />
 );
 
 export const CompleteWorkoutButton: React.FC<Omit<ButtonProps, 'variant' | 'animation'>> = (props) => (
@@ -240,9 +267,9 @@ export const CompleteWorkoutButton: React.FC<Omit<ButtonProps, 'variant' | 'anim
 );
 
 export const RestButton: React.FC<Omit<ButtonProps, 'variant' | 'pulse'>> = (props) => (
-  <Button {...props} variant="zen" pulse />
+  <Button {...props} variant="zen" />
 );
 
 export const EmergencyStopButton: React.FC<Omit<ButtonProps, 'variant' | 'pulse'>> = (props) => (
-  <Button {...props} variant="error" pulse size="lg" />
+  <Button {...props} variant="error" size="lg" />
 );

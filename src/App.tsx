@@ -1,4 +1,5 @@
-import { useEffect, Suspense, lazy, useState } from 'react';
+/* App.tsx — improved for performance, maintainability, and UX */
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import {
   BrowserRouter as Router,
   Routes,
@@ -9,14 +10,36 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './components/auth/AuthProvider';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
-import { InstallPrompt } from './components/pwa/InstallPrompt';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { PageSuspenseFallback } from './components/ui/SuspenseFallback';
-import { initOfflineStorage } from './utils/offlineStorage';
 import { logger } from './utils/logger';
 import { Button } from './components/ui/Button';
 
-// Lazy load pages for better performance and code splitting
+/* ---------- App constants ---------- */
+const APP_NAME = 'NeuraFit';
+/**
+ * Respect Vite's BASE_URL when the app is served from a subpath.
+ * React Router expects no trailing slash.
+ */
+const BASENAME: string =
+  (typeof import.meta !== 'undefined' &&
+    (import.meta as any)?.env?.BASE_URL?.replace(/\/$/, '')) ||
+  '';
+
+/** Human‑readable names for a11y announcements & document titles */
+const ROUTE_NAMES: Record<string, string> = {
+  '/': 'Home',
+  '/login': 'Login',
+  '/signup': 'Sign up',
+  '/forgot-password': 'Forgot Password',
+  '/onboarding': 'Onboarding',
+  '/app': 'Dashboard',
+  '/app/workout': 'Workout',
+  '/app/history': 'History',
+  '/app/profile': 'Profile',
+};
+
+/* ---------- Lazy pages (code splitting) ---------- */
 const LandingPage = lazy(() =>
   import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })),
 );
@@ -44,24 +67,31 @@ const HistoryPage = lazy(() =>
 const ProfilePage = lazy(() =>
   import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })),
 );
-
-
 const Layout = lazy(() =>
   import('./components/layout/Layout').then((m) => ({ default: m.Layout })),
 );
 
-// Create a client with resilient, client-friendly defaults
+/* ---------- Query Client (resilient defaults) ---------- */
+function getStatusFromError(error: unknown): number | undefined {
+  // Works across fetch / Axios / custom errors
+  const e = error as any;
+  const status = e?.status ?? e?.response?.status ?? e?.cause?.status;
+  if (typeof status === 'number') return status;
+
+  // Best-effort parse from message (e.g., "Request failed with status code 401")
+  const msg: string | undefined = e?.message;
+  const m = typeof msg === 'string' ? msg.match(/\b([45]\d{2})\b/) : null;
+  return m ? Number(m[1]) : undefined;
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
-      retry: (failureCount, error: any) => {
-        // Avoid retries on most client/authorization errors
-        const status =
-          error?.status ?? error?.response?.status ?? error?.cause?.status;
-        if (typeof status === 'number' && status >= 400 && status < 500) {
-          return false;
-        }
+      retry: (failureCount, error) => {
+        const status = getStatusFromError(error);
+        // Do not retry on most client/authorization errors
+        if (status && status >= 400 && status < 500) return false;
         return failureCount < 2;
       },
       refetchOnWindowFocus: false,
@@ -73,13 +103,17 @@ const queryClient = new QueryClient({
   },
 });
 
-/* ---------- UX helpers (in-file to keep setup simple) ---------- */
+/* ---------- UX helpers ---------- */
 
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
-    // Instant jump avoids motion sickness between pages
-    window.scrollTo({ top: 0, behavior: 'auto' });
+    if (typeof window === 'undefined') return;
+    // Use rAF to avoid layout thrash and ensure scroll occurs after paint
+    const id = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    });
+    return () => window.cancelAnimationFrame(id);
   }, [pathname]);
   return null;
 }
@@ -87,30 +121,26 @@ function ScrollToTop() {
 function RouteAnnouncer() {
   const { pathname } = useLocation();
   const [message, setMessage] = useState('Loaded');
-  const [previousPath, setPreviousPath] = useState<string>('');
+  const previousPathRef = useRef<string>('');
 
   useEffect(() => {
-    const names: Record<string, string> = {
-      '/': 'Home',
-      '/login': 'Login',
-      '/signup': 'Sign up',
-      '/forgot-password': 'Forgot Password',
-      '/onboarding': 'Onboarding',
-      '/app': 'Dashboard',
-      '/app/workout': 'Workout',
-      '/app/history': 'History',
-      '/app/profile': 'Profile',
-    };
-    const pageName = names[pathname] ?? 'page';
-    setMessage(`Navigated to ${pageName}`);
+    const pageName = ROUTE_NAMES[pathname] ?? 'page';
+    const from = previousPathRef.current;
+    const to = pathname;
 
-    // Log navigation using simple logger
-    logger.debug('Route changed', { from: previousPath, to: pathname, page: pageName });
-    setPreviousPath(pathname);
-  }, [pathname, previousPath]);
+    setMessage(`Navigated to ${pageName}`);
+    previousPathRef.current = pathname;
+
+    // Keep document title in sync with navigation
+    if (typeof document !== 'undefined') {
+      document.title = `${pageName} • ${APP_NAME}`;
+    }
+
+    logger.debug('Route changed', { from, to, page: pageName });
+  }, [pathname]);
 
   return (
-    <div aria-live="polite" aria-atomic="true" className="sr-only">
+    <div aria-live="polite" aria-atomic="true" role="status" className="sr-only">
       {message}
     </div>
   );
@@ -122,8 +152,14 @@ function NetworkStatusBanner() {
   );
 
   useEffect(() => {
-    const on = () => setOnline(true);
-    const off = () => setOnline(false);
+    const on = () => {
+      setOnline(true);
+      logger.info('Network online');
+    };
+    const off = () => {
+      setOnline(false);
+      logger.warn('Network offline');
+    };
     window.addEventListener('online', on);
     window.addEventListener('offline', off);
     return () => {
@@ -134,29 +170,32 @@ function NetworkStatusBanner() {
 
   if (online) return null;
   return (
-    <div className="fixed inset-x-0 top-0 z-[60] flex items-center justify-center px-3 py-2 text-sm text-white bg-red-600/90 backdrop-blur-sm">
+    <div
+      className="fixed inset-x-0 top-0 z-[60] flex items-center justify-center px-3 py-2 text-sm text-white bg-red-600/90 backdrop-blur-sm"
+      role="status"
+      aria-live="polite"
+    >
       You are offline. Some features may be unavailable.
     </div>
   );
 }
 
-// Warm up likely-next routes when the main bundle is idle
+/** Warm likely-next routes when idle (gentle hinting to the browser cache) */
 function PrefetchOnIdle() {
   useEffect(() => {
     const prefetch = () => {
-      import('./components/layout/Layout').catch(() => {});
-      import('./pages/DashboardPage').catch(() => {});
-      import('./pages/WorkoutPage').catch(() => {});
-      import('./pages/ProfilePage').catch(() => {});
-      import('./pages/HistoryPage').catch(() => {});
+      // Fire-and-forget dynamic imports; ignore errors (e.g., on flaky networks)
+      void import('./components/layout/Layout').catch(() => {});
+      void import('./pages/DashboardPage').catch(() => {});
+      void import('./pages/WorkoutPage').catch(() => {});
+      void import('./pages/ProfilePage').catch(() => {});
+      void import('./pages/HistoryPage').catch(() => {});
     };
 
-    const ric: typeof window.requestIdleCallback | undefined = (window as any)
-      .requestIdleCallback;
-
-    if (ric) {
-      const id = ric(prefetch, { timeout: 2000 });
-      return () => (window as any).cancelIdleCallback?.(id);
+    const w = window as any;
+    if (typeof w.requestIdleCallback === 'function') {
+      const id = w.requestIdleCallback(prefetch, { timeout: 2000 });
+      return () => w.cancelIdleCallback?.(id);
     } else {
       const id = window.setTimeout(prefetch, 1200);
       return () => window.clearTimeout(id);
@@ -165,6 +204,7 @@ function PrefetchOnIdle() {
   return null;
 }
 
+/* ---------- Light-weight 404 ---------- */
 function NotFoundPage() {
   return (
     <div className="min-h-[60vh] grid place-items-center px-6 py-24 text-center">
@@ -184,24 +224,23 @@ function NotFoundPage() {
   );
 }
 
+/* ---------- Main shell ---------- */
 function AppShell() {
   return (
-    <Router>
+    <Router basename={BASENAME}>
       <ScrollToTop />
       <RouteAnnouncer />
       <NetworkStatusBanner />
       <PrefetchOnIdle />
 
       <div className="min-h-screen bg-neutral-50">
-        <Suspense fallback={<PageSuspenseFallback message="Loading NeuraFit..." />}>
+        <Suspense fallback={<PageSuspenseFallback message={`Loading ${APP_NAME}...`} />}>
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-
-
 
             {/* Protected routes */}
             <Route
@@ -226,7 +265,9 @@ function AppShell() {
               <Route
                 index
                 element={
-                  <Suspense fallback={<PageSuspenseFallback message="Loading dashboard..." />}>
+                  <Suspense
+                    fallback={<PageSuspenseFallback message="Loading dashboard..." />}
+                  >
                     <DashboardPage />
                   </Suspense>
                 }
@@ -234,7 +275,9 @@ function AppShell() {
               <Route
                 path="workout"
                 element={
-                  <Suspense fallback={<PageSuspenseFallback message="Loading workout..." />}>
+                  <Suspense
+                    fallback={<PageSuspenseFallback message="Loading workout..." />}
+                  >
                     <WorkoutPage />
                   </Suspense>
                 }
@@ -242,7 +285,9 @@ function AppShell() {
               <Route
                 path="history"
                 element={
-                  <Suspense fallback={<PageSuspenseFallback message="Loading history..." />}>
+                  <Suspense
+                    fallback={<PageSuspenseFallback message="Loading history..." />}
+                  >
                     <HistoryPage />
                   </Suspense>
                 }
@@ -250,7 +295,9 @@ function AppShell() {
               <Route
                 path="profile"
                 element={
-                  <Suspense fallback={<PageSuspenseFallback message="Loading profile..." />}>
+                  <Suspense
+                    fallback={<PageSuspenseFallback message="Loading profile..." />}
+                  >
                     <ProfilePage />
                   </Suspense>
                 }
@@ -262,19 +309,15 @@ function AppShell() {
           </Routes>
         </Suspense>
 
-        {/* PWA Install Prompt */}
-        <InstallPrompt />
+
       </div>
     </Router>
   );
 }
 
+/* ---------- Root ---------- */
 function App() {
   useEffect(() => {
-    // Initialize offline storage
-    initOfflineStorage();
-
-    // Simple app initialization logging
     logger.info('App initialized');
   }, []);
 

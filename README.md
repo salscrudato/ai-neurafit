@@ -14,10 +14,10 @@ Your AI-powered personal fitness trainer. Get personalized workouts that adapt t
 
 ### Development Setup
 
-#### Option 1: Full Development Environment (Recommended)
+#### Option 1: Quick Start (Recommended)
 ```bash
-# Start both frontend and backend
-npm run dev:full
+# Start both frontend and backend with one command
+npm start
 ```
 
 #### Option 2: Manual Setup
@@ -37,26 +37,28 @@ npm run dev
 ```
 
 ### Access Points
-- **Frontend**: http://localhost:5173
-- **Firebase Emulators**: http://localhost:4000
+- **Frontend**: http://localhost:5174 (or next available port)
+- **Firebase Emulators UI**: http://localhost:4002
 - **Functions**: http://localhost:5001
-- **Firestore**: http://localhost:8080
+- **Firestore**: http://localhost:8081
+- **Authentication**: http://localhost:9099
 
 ## 🛠️ Available Scripts
 
 ```bash
 # Development
-npm run dev              # Start frontend only
-npm run dev:full         # Start frontend + backend
-npm run emulators        # Start Firebase emulators only
-npm run functions:dev    # Start functions only
+npm start               # Start both frontend and backend (recommended)
+npm run dev             # Start frontend only
+npm run dev:full        # Alternative: Start with shell script
+npm run emulators       # Start Firebase emulators only
+npm run functions:dev   # Start functions only
 
 # Building
-npm run build           # Build for production
-npm run preview         # Preview production build
+npm run build          # Build for production
+npm run preview        # Preview production build
 
 # Deployment
-npm run deploy          # Build and deploy to Firebase
+npm run deploy         # Build and deploy to Firebase
 ```
 
 ## 🔧 Technology Stack
@@ -88,7 +90,6 @@ npm run deploy          # Build and deploy to Firebase
 - **Interactive Workout Sessions** - Real-time timers and progress tracking
 - **User Authentication** - Email/password and Google sign-in
 - **Workout History** - Track your fitness journey
-- **PWA Support** - Install as native app, offline functionality
 - **Mobile Optimized** - Designed for mobile-first experience
 
 ## �� Troubleshooting

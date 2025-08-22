@@ -1,507 +1,639 @@
-import * as functions from "firebase-functions";
-import * as admin from "firebase-admin";
-import OpenAI from "openai";
+/**
+ * Workouts API (AI-generated)
+ * - Callable v2 with App Check
+ * - Zod validation for inputs/outputs
+ * - Uses canonical user profile from Firestore
+ * - OpenAI JSON mode with strict schema validation
+ * - Idempotency (optional)
+ * - Simple per-user rate limiting
+ */
 
+import * as admin from 'firebase-admin';
+import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { logger } from 'firebase-functions';
+import OpenAI from 'openai';
+import { z } from 'zod';
+import { createHash } from 'crypto';
+
+if (admin.apps.length === 0) admin.initializeApp();
 const db = admin.firestore();
+db.settings({ ignoreUndefinedProperties: true });
 
-// Initialize OpenAI lazily
-const getOpenAI = () => {
-  return new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
-};
-
-interface WorkoutGenerationRequest {
-  fitnessLevel: "beginner" | "intermediate" | "advanced";
-  fitnessGoals: string[];
-  availableEquipment: string[];
-  timeCommitment: {
-    daysPerWeek: number;
-    minutesPerSession: number;
-    preferredTimes: string[];
-  };
-  workoutType: string;
-  preferences: {
-    workoutTypes: string[];
-    intensity: "low" | "moderate" | "high";
-    restDayPreference: number;
-    injuriesOrLimitations: string[];
-  };
-  progressionLevel?: number; // 1-10 scale for workout progression
-  focusAreas?: string[]; // Specific muscle groups or skills to focus on
-  previousWorkouts?: string[]; // IDs of recent workouts for variety
-}
-
-interface Exercise {
-  name: string;
-  description: string;
-  instructions: string[];
-  targetMuscles: string[];
-  equipment: string[];
-  difficulty: string;
-  sets: number;
-  reps?: number;
-  duration?: number;
-  restTime: number;
-  tips: string[];
-  progressionNotes?: string; // How to make this exercise harder/easier
-  alternatives?: string[]; // Alternative exercises if equipment unavailable
-  formCues?: string[]; // Key form points to focus on
-}
-
-interface WorkoutPlan {
-  name: string;
-  description: string;
-  type: string;
-  difficulty: string;
-  estimatedDuration: number;
-  exercises: Exercise[];
-  equipment: string[];
-  targetMuscles: string[];
-  aiGenerated: boolean;
-  personalizedFor: string;
-  warmUp?: Exercise[]; // Dedicated warm-up exercises
-  coolDown?: Exercise[]; // Dedicated cool-down exercises
-  progressionTips?: string[]; // How to progress this workout over time
-  motivationalQuote?: string; // Inspirational message for the workout
-  calorieEstimate?: number; // Estimated calories burned
-}
-
-// Generate AI-powered workout
-export const generateWorkout = functions.https.onCall(async (data: WorkoutGenerationRequest, context) => {
-  // Check authentication
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "User must be authenticated");
+/* -----------------------------------------------------------------------------
+ * OpenAI client (lazy)
+ * ---------------------------------------------------------------------------*/
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+function getOpenAI() {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) {
+    throw new HttpsError(
+      'failed-precondition',
+      'Server misconfiguration: OPENAI_API_KEY is not set.',
+    );
   }
+  return new OpenAI({ apiKey: key });
+}
 
-  const userId = context.auth.uid;
+/* -----------------------------------------------------------------------------
+ * Schemas
+ * ---------------------------------------------------------------------------*/
+const Difficulty = z.enum(['beginner', 'intermediate', 'advanced']);
+const Intensity = z.enum(['low', 'moderate', 'high']);
 
+const Str = z.string().trim();
+const StrId = Str.min(1).max(128);
+const StrTiny = Str.min(1).max(64);
+const StrShort = Str.min(1).max(160);
+const StrLong = Str.min(1).max(2000);
+const StrList = z.array(StrTiny).max(30);
+
+const ExerciseSchema = z.object({
+  name: StrTiny,
+  description: StrLong,
+  instructions: z.array(StrShort).min(1).max(12),
+  targetMuscles: z.array(StrTiny).min(1).max(10),
+  equipment: z.array(StrTiny).min(0).max(10),
+  difficulty: Difficulty,
+  sets: z.number().int().min(1).max(10),
+  reps: z.number().int().min(1).max(50).optional().nullable(),
+  duration: z.number().int().min(5).max(3600).optional().nullable(), // seconds
+  restTime: z.number().int().min(0).max(600),
+  tips: z.array(StrShort).min(0).max(10),
+  progressionNotes: StrLong.optional(),
+  alternatives: z.array(StrTiny).max(8).optional(),
+  formCues: z.array(StrShort).max(10).optional(),
+});
+
+const WorkoutPlanSchema = z.object({
+  name: StrTiny,
+  description: StrLong,
+  type: StrTiny,
+  difficulty: Difficulty,
+  estimatedDuration: z.number().int().min(10).max(180), // minutes
+  exercises: z.array(ExerciseSchema).min(1).max(40),
+  equipment: z.array(StrTiny).max(20),
+  targetMuscles: z.array(StrTiny).max(20),
+  aiGenerated: z.boolean().optional(), // injected server-side
+  personalizedFor: z.any().optional(), // injected (object)
+  warmUp: z.array(ExerciseSchema).max(10).optional(),
+  coolDown: z.array(ExerciseSchema).max(10).optional(),
+  progressionTips: z.array(StrShort).max(10).optional(),
+  motivationalQuote: StrShort.optional(),
+  calorieEstimate: z.number().int().min(50).max(1500).optional(),
+});
+
+const PreferredTime = z.enum(['morning', 'afternoon', 'evening', 'variable']);
+
+const ProfileShape = z.object({
+  fitnessLevel: Difficulty,
+  fitnessGoals: StrList.default([]),
+  availableEquipment: StrList.default([]),
+  timeCommitment: z.object({
+    daysPerWeek: z.number().int().min(1).max(7),
+    minutesPerSession: z.number().int().min(10).max(180),
+    preferredTimes: z.array(PreferredTime).nonempty().max(4),
+  }),
+  preferences: z.object({
+    workoutTypes: StrList.default([]),
+    intensity: Intensity,
+    restDayPreference: z.number().int().min(0).max(6),
+    injuriesOrLimitations: StrList.default([]),
+  }),
+  // Optional system enrichments from userProfile.ts
+  system: z
+    .object({
+      weeklyMinutes: z.number().int().min(10).max(1260),
+      intensityScore: z.number().int().min(1).max(3),
+      trainingLoadIndex: z.number().int().min(10).max(10000),
+      profileDigest: z.string().length(64),
+    })
+    .partial()
+    .optional(),
+});
+
+const WorkoutGenerationRequestSchema = z
+  .object({
+    workoutType: StrTiny,
+    progressionLevel: z.number().int().min(1).max(10).optional(),
+    focusAreas: z.array(StrTiny).max(8).optional(),
+    previousWorkouts: z.array(StrId).max(20).optional(),
+    // Optional profile overrides (rare; we prefer canonical Firestore profile)
+    fitnessLevel: Difficulty.optional(),
+    fitnessGoals: StrList.optional(),
+    availableEquipment: StrList.optional(),
+    timeCommitment: ProfileShape.shape.timeCommitment.optional(),
+    preferences: ProfileShape.shape.preferences.optional(),
+    idempotencyKey: z.string().trim().min(8).max(64).optional(),
+  })
+  .strict();
+
+const AdaptiveRequestSchema = z
+  .object({
+    previousWorkoutId: StrId,
+    performanceRating: z.number().min(1).max(5),
+    completionRate: z.number().min(0).max(1),
+    difficultyFeedback: z.enum(['too_easy', 'just_right', 'too_hard']),
+    timeActual: z.number().int().min(5).max(600),
+  })
+  .strict();
+
+/* -----------------------------------------------------------------------------
+ * Utilities
+ * ---------------------------------------------------------------------------*/
+function requireAuth<T>(ctx: { auth?: { uid?: string } }): string {
+  const uid = ctx.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'User must be authenticated.');
+  return uid;
+}
+
+async function readCanonicalProfile(uid: string): Promise<z.infer<typeof ProfileShape>> {
+  const snap = await db.collection('userProfiles').doc(uid).get();
+  if (!snap.exists) {
+    throw new HttpsError('failed-precondition', 'Profile not found. Complete onboarding.');
+  }
+  // Be tolerant: validate with Zod; throw if shape is incompatible
+  return ProfileShape.parse(snap.data());
+}
+
+function sanitizeList(list?: string[]) {
+  return Array.from(new Set((list || []).map((s) => s.trim()).filter(Boolean)));
+}
+
+function pickAllowedEquipment(
+  planEquipment: string[],
+  allowedEquipment: string[],
+): string[] {
+  const allowed = new Set(allowedEquipment.map((e) => e.toLowerCase()));
+  const safe = planEquipment.filter((e) => allowed.has(e.toLowerCase()) || e.toLowerCase() === 'bodyweight');
+  // Always include plan-level union; client UI can decorate per-exercise
+  return Array.from(new Set(safe.length ? safe : ['bodyweight']));
+}
+
+function digest(value: unknown): string {
+  return createHash('sha256').update(JSON.stringify(value)).digest('hex');
+}
+
+function extractJson(text: string): string {
+  // Handles responses wrapped in fences or prose
+  const trimmed = text.trim();
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) return trimmed;
+  const fence = /```(?:json)?\s*([\s\S]*?)\s*```/i.exec(trimmed);
+  if (fence && fence[1]) return fence[1];
+  const first = trimmed.indexOf('{');
+  const last = trimmed.lastIndexOf('}');
+  if (first !== -1 && last !== -1 && last > first) return trimmed.slice(first, last + 1);
+  throw new Error('No JSON object found in model output.');
+}
+
+/** Simple per-user throttling: at most 1 call / 15s and 10 calls / hr for a function key. */
+async function enforceRateLimit(uid: string, key: string) {
+  const ref = db.collection('_rateLimits').doc(`${uid}:${key}`);
+  await db.runTransaction(async (tx) => {
+    const now = admin.firestore.Timestamp.now();
+    const hourAgo = admin.firestore.Timestamp.fromMillis(now.toMillis() - 3600_000);
+    const fifteenAgo = admin.firestore.Timestamp.fromMillis(now.toMillis() - 15_000);
+
+    const snap = await tx.get(ref);
+    const data = snap.exists
+      ? (snap.data() as { lastCallAt?: admin.firestore.Timestamp; windowStart?: admin.firestore.Timestamp; count?: number })
+      : {};
+
+    // Short-circuit: 1 call / 15s
+    if (data.lastCallAt && data.lastCallAt.toMillis() > fifteenAgo.toMillis()) {
+      throw new HttpsError('resource-exhausted', 'Please wait a few seconds before trying again.');
+    }
+
+    // Hourly window
+    let windowStart = data.windowStart ?? now;
+    let count = data.count ?? 0;
+    if (windowStart.toMillis() < hourAgo.toMillis()) {
+      windowStart = now;
+      count = 0;
+    }
+    if (count >= 10) {
+      throw new HttpsError('resource-exhausted', 'Hourly generation limit reached. Try later.');
+    }
+
+    tx.set(
+      ref,
+      { lastCallAt: now, windowStart, count: count + 1, key },
+      { merge: true },
+    );
+  });
+}
+
+/* -----------------------------------------------------------------------------
+ * Model calls
+ * ---------------------------------------------------------------------------*/
+async function callModelJSON(messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]) {
+  const openai = getOpenAI();
   try {
-    // Get user's workout history for personalization
-    const recentWorkouts = await db.collection("workoutSessions")
-      .where("userId", "==", userId)
-      .orderBy("startTime", "desc")
+    const completion = await openai.chat.completions.create({
+      model: OPENAI_MODEL,
+      messages,
+      temperature: 0.6,
+      max_tokens: 2400,
+      response_format: { type: 'json_object' as const }, // JSON mode
+    });
+    const content = completion.choices?.[0]?.message?.content;
+    const usage = completion.usage ?? undefined;
+    if (!content) throw new Error('Empty model response.');
+    return { content, usage };
+  } catch (err: any) {
+    // Fallback: retry without response_format if model doesn't support it
+    const msg = `${err?.message || err}`;
+    const unsupported = /response_format/i.test(msg);
+    if (unsupported) {
+      const completion = await getOpenAI().chat.completions.create({
+        model: OPENAI_MODEL,
+        messages: [
+          ...messages,
+          {
+            role: 'system',
+            content:
+              'Return ONLY a valid JSON object. Do not include markdown fences or any commentary.',
+          },
+        ],
+        temperature: 0.6,
+        max_tokens: 2400,
+      });
+      const content = completion.choices?.[0]?.message?.content;
+      const usage = completion.usage ?? undefined;
+      if (!content) throw new Error('Empty model response (fallback).');
+      return { content, usage };
+    }
+    throw err;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+ * Prompt builders
+ * ---------------------------------------------------------------------------*/
+function buildSystemPrompt(): string {
+  return [
+    'You are an elite personal trainer and exercise physiologist.',
+    'Create highly personalized, progressive workouts that are safe, effective, and motivating.',
+    'Requirements:',
+    '- Safety first (clear form cues, account for limitations)',
+    '- Progressive overload (note how to progress/regress)',
+    '- Specificity to goals and equipment only',
+    '- Variety without randomness, and respect session time',
+    '- Recovery balance and smart rest',
+    'Output: STRICT JSON conforming to the provided schema. No comments or markdown.',
+  ].join('\n');
+}
+
+function buildUserPromptForPlan(input: {
+  profile: z.infer<typeof ProfileShape>;
+  workoutType: string;
+  progressionLevel: number;
+  focusAreas: string[];
+  historySample: any[];
+  progressSample: any[];
+  frequentExercises: string[];
+}): string {
+  const { profile, workoutType, progressionLevel, focusAreas } = input;
+
+  return `
+Generate a single-session workout tailored to this user:
+
+PROFILE
+- Fitness level: ${profile.fitnessLevel}
+- Goals: ${profile.fitnessGoals.join(', ') || '—'}
+- Equipment ONLY: ${profile.availableEquipment.join(', ') || 'bodyweight'}
+- Time: ${profile.timeCommitment.minutesPerSession} min, ${profile.timeCommitment.daysPerWeek} days/week, preferred: ${profile.timeCommitment.preferredTimes.join(', ')}
+- Preferences: types=${profile.preferences.workoutTypes.join(', ') || '—'}, intensity=${profile.preferences.intensity}, rest-day=${profile.preferences.restDayPreference}, limitations=${profile.preferences.injuriesOrLimitations.join(', ') || 'none'}
+- System: weeklyMinutes=${profile.system?.weeklyMinutes ?? 'n/a'}, trainingLoadIndex=${profile.system?.trainingLoadIndex ?? 'n/a'}
+
+SESSION
+- Type: ${workoutType}
+- Focus areas: ${focusAreas.join(', ') || 'general fitness'}
+- Target progression level (1..10): ${progressionLevel}
+
+DATA POINTS
+- History sample: ${JSON.stringify(input.historySample)}
+- Recent progress sample: ${JSON.stringify(input.progressSample)}
+- Frequently used exercises to avoid repeating: ${input.frequentExercises.join(', ') || 'none'}
+
+SCHEMA
+${WorkoutPlanSchema.toString()}
+
+CONSTRAINTS
+- Use only the allowed equipment.
+- Fit within the allotted minutes including warm-up and cool-down.
+- Provide exercise-level instructions, restTime (sec), and realistic sets/reps or duration.
+- Include helpful progression tips and a motivational quote.
+`.trim();
+}
+
+function buildUserPromptForAdaptive(input: {
+  previousWorkout: any;
+  performanceRating: number;
+  completionRate: number;
+  difficultyFeedback: 'too_easy' | 'just_right' | 'too_hard';
+  timeActual: number;
+  progressionLevel: number;
+}) {
+  const { previousWorkout } = input;
+  return `
+Create an ADAPTIVE workout improving on the prior session.
+
+PRIOR SESSION
+- Name: ${previousWorkout?.name}
+- Type: ${previousWorkout?.type}
+- Estimated duration: ${previousWorkout?.estimatedDuration} min
+
+FEEDBACK
+- Performance rating: ${input.performanceRating}/5
+- Completion rate: ${Math.round(input.completionRate * 100)}%
+- Difficulty feedback: ${input.difficultyFeedback}
+- Time taken: ${input.timeActual} min
+
+ADAPTATION TARGET
+- New progression level: ${input.progressionLevel} (1..10)
+
+Rules:
+- Preserve theme/type but adjust intensity, volume, and complexity according to feedback.
+- Keep equipment constraints identical to previous.
+- Maintain or improve movement quality; emphasize form cues and safety.
+- Output STRICT JSON for the same schema used previously.
+`.trim();
+}
+
+/* -----------------------------------------------------------------------------
+ * Domain helpers
+ * ---------------------------------------------------------------------------*/
+function calculateProgressionLevel(history: any[], fitnessLevel: z.infer<typeof Difficulty>): number {
+  if (!history.length) return fitnessLevel === 'beginner' ? 1 : fitnessLevel === 'intermediate' ? 4 : 7;
+  const completed = history.filter((w) => (w.rating ?? 0) >= 3).length;
+  const avg = history.reduce((s, w) => s + (w.rating ?? 0), 0) / history.length;
+  let base = fitnessLevel === 'beginner' ? 1 : fitnessLevel === 'intermediate' ? 4 : 7;
+  if (completed >= 5 && avg >= 4) base += 1;
+  if (completed >= 10 && avg >= 4.5) base += 1;
+  return Math.max(1, Math.min(10, base));
+}
+
+function getFrequentExercises(history: any[]): string[] {
+  const counts: Record<string, number> = {};
+  for (const w of history) {
+    for (const id of w.exercises ?? []) counts[id] = (counts[id] || 0) + 1;
+  }
+  return Object.entries(counts)
+    .filter(([, c]) => c >= 3)
+    .map(([id]) => id);
+}
+
+/* -----------------------------------------------------------------------------
+ * Callable: generateWorkout
+ * ---------------------------------------------------------------------------*/
+export const generateWorkout = onCall(
+  {
+    region: 'us-central1',
+    memory: '512MiB',
+    timeoutSeconds: 180,
+    enforceAppCheck: true,
+  },
+  async (req) => {
+    const uid = requireAuth(req);
+
+    // Basic abuse control
+    await enforceRateLimit(uid, 'generateWorkout');
+
+    // Validate request
+    const input = WorkoutGenerationRequestSchema.parse(req.data ?? {});
+    const profile = await readCanonicalProfile(uid).catch(async (e) => {
+      // Fallback to client-provided profile (rare; first-run)
+      if (!input.fitnessLevel || !input.timeCommitment || !input.preferences) throw e;
+      return ProfileShape.parse({
+        fitnessLevel: input.fitnessLevel,
+        fitnessGoals: sanitizeList(input.fitnessGoals),
+        availableEquipment: sanitizeList(input.availableEquipment),
+        timeCommitment: input.timeCommitment,
+        preferences: input.preferences,
+      });
+    });
+
+    // Personalization data from recent sessions & metrics
+    const sessionsSnap = await db
+      .collection('workoutSessions')
+      .where('userId', '==', uid)
+      .orderBy('startTime', 'desc')
       .limit(10)
       .get();
 
-    const workoutHistory = recentWorkouts.docs.map(doc => {
-      const data = doc.data();
+    const history = sessionsSnap.docs.map((d) => {
+      const x = d.data();
+      const duration =
+        x.endTime && x.startTime
+          ? Math.round((x.endTime.toDate().getTime() - x.startTime.toDate().getTime()) / 60000)
+          : null;
       return {
-        type: data.workoutPlan?.type,
-        completedAt: data.endTime,
-        rating: data.rating,
-        feedback: data.feedback,
-        exercises: data.completedExercises?.map((ex: any) => ex.exerciseId) || [],
-        duration: data.endTime && data.startTime ?
-          Math.round((data.endTime.toDate().getTime() - data.startTime.toDate().getTime()) / (1000 * 60)) : null,
+        type: x.workoutPlan?.type,
+        completedAt: x.endTime,
+        rating: x.rating,
+        feedback: x.feedback,
+        exercises: (x.completedExercises ?? []).map((e: any) => e.exerciseId),
+        duration,
       };
     });
 
-    // Get user's progress metrics
-    const progressMetrics = await db.collection("progressMetrics")
-      .where("userId", "==", userId)
-      .orderBy("date", "desc")
+    const metricsSnap = await db
+      .collection('progressMetrics')
+      .where('userId', '==', uid)
+      .orderBy('date', 'desc')
       .limit(5)
       .get();
+    const progressSample = metricsSnap.docs.map((d) => d.data());
 
-    const recentProgress = progressMetrics.docs.map(doc => doc.data());
+    // Derive progression level & repetition avoidance set
+    const level =
+      input.progressionLevel ?? calculateProgressionLevel(history, profile.fitnessLevel);
+    const frequent = getFrequentExercises(history);
 
-    // Calculate user's progression level based on workout history
-    const progressionLevel = calculateProgressionLevel(workoutHistory, data.fitnessLevel);
-
-    // Get frequently used exercises to avoid repetition
-    const frequentExercises = getFrequentExercises(workoutHistory);
-
-    // Create enhanced AI prompt for workout generation
-    const prompt = createAdvancedWorkoutPrompt(data, workoutHistory, recentProgress, progressionLevel, frequentExercises);
-    
-    // Generate workout using OpenAI with enhanced system prompt
-    const openai = getOpenAI();
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: `You are an elite personal trainer and exercise physiologist with 15+ years of experience. You specialize in creating highly personalized, progressive workout plans that adapt to individual needs, preferences, and progress.
-
-Key principles:
-- Safety first: Always prioritize proper form and injury prevention
-- Progressive overload: Gradually increase difficulty to promote adaptation
-- Specificity: Tailor exercises to user's goals and fitness level
-- Variety: Prevent boredom and plateaus with diverse exercise selection
-- Recovery: Include appropriate rest periods and recovery considerations
-- Motivation: Create engaging, challenging but achievable workouts
-
-Return your response as a valid JSON object matching the WorkoutPlan interface. Include detailed exercise instructions, form cues, and progression notes.`
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      temperature: 0.8,
-      max_tokens: 3000,
+    // Build messages for JSON output
+    const userMsg = buildUserPromptForPlan({
+      profile,
+      workoutType: input.workoutType,
+      progressionLevel: level,
+      focusAreas: sanitizeList(input.focusAreas),
+      historySample: history.slice(0, 5),
+      progressSample: progressSample.slice(0, 3),
+      frequentExercises: frequent,
     });
 
-    const aiResponse = completion.choices[0]?.message?.content;
-    
-    if (!aiResponse) {
-      throw new Error("No response from AI");
+    const { content, usage } = await callModelJSON([
+      { role: 'system', content: buildSystemPrompt() },
+      { role: 'user', content: userMsg },
+    ]);
+
+    // Parse & validate JSON
+    const json = extractJson(content);
+    const parsed = WorkoutPlanSchema.safeParse(JSON.parse(json));
+    if (!parsed.success) {
+      logger.error('Model JSON failed validation', { issues: parsed.error.issues });
+      throw new HttpsError('internal', 'Model returned invalid plan JSON.');
     }
+    let plan = parsed.data;
 
-    // Parse AI response
-    let workoutPlan: WorkoutPlan;
-    try {
-      workoutPlan = JSON.parse(aiResponse);
-    } catch (parseError) {
-      functions.logger.error("Error parsing AI response:", parseError);
-      throw new Error("Invalid AI response format");
-    }
+    // Enforce equipment constraint at plan level
+    plan.equipment = pickAllowedEquipment(
+      plan.equipment ?? [],
+      profile.availableEquipment,
+    );
 
-    // Add metadata
-    workoutPlan.aiGenerated = true;
-    workoutPlan.personalizedFor = JSON.stringify({
-      fitnessLevel: data.fitnessLevel,
-      goals: data.fitnessGoals,
-      equipment: data.availableEquipment,
-    });
+    // Server-side enrichments
+    const personalizedFor = {
+      fitnessLevel: profile.fitnessLevel,
+      goals: profile.fitnessGoals,
+      equipment: profile.availableEquipment,
+      intensityPref: profile.preferences.intensity,
+    };
+    plan.aiGenerated = true;
+    plan.personalizedFor = personalizedFor;
 
-    // Save workout plan to Firestore
-    const workoutPlanRef = await db.collection("workoutPlans").add({
-      ...workoutPlan,
-      userId,
+    // Idempotency / dedupe key
+    const dedupeKey =
+      input.idempotencyKey ??
+      digest({
+        uid,
+        type: plan.type,
+        minutes: profile.timeCommitment.minutesPerSession,
+        level,
+        equip: plan.equipment,
+        digest: profile.system?.profileDigest ?? null,
+      });
+
+    // Persist
+    const doc = {
+      ...plan,
+      userId: uid,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+      source: 'ai',
+      model: OPENAI_MODEL,
+      usage: usage ? { ...usage } : undefined,
+      profileDigest: profile.system?.profileDigest ?? null,
+      dedupeKey,
+      status: 'ready',
+    };
 
-    functions.logger.info(`Workout generated for user ${userId}: ${workoutPlanRef.id}`);
+    // Create a new doc but allow clients to search by dedupeKey to reuse results
+    const ref = await db.collection('workoutPlans').add(doc);
+
+    logger.info('Workout generated', { uid, planId: ref.id, model: OPENAI_MODEL });
 
     return {
       success: true,
-      workoutPlan: {
-        id: workoutPlanRef.id,
-        ...workoutPlan,
+      workoutPlan: { id: ref.id, ...plan },
+      dedupeKey,
+    };
+  },
+);
+
+/* -----------------------------------------------------------------------------
+ * Callable: generateAdaptiveWorkout
+ * ---------------------------------------------------------------------------*/
+export const generateAdaptiveWorkout = onCall(
+  {
+    region: 'us-central1',
+    memory: '512MiB',
+    timeoutSeconds: 180,
+    enforceAppCheck: true,
+  },
+  async (req) => {
+    const uid = requireAuth(req);
+    await enforceRateLimit(uid, 'generateAdaptiveWorkout');
+
+    const input = AdaptiveRequestSchema.parse(req.data ?? {});
+
+    // Fetch previous workout and ensure it belongs to user
+    const prevSnap = await db.collection('workoutPlans').doc(input.previousWorkoutId).get();
+    if (!prevSnap.exists) throw new HttpsError('not-found', 'Previous workout not found.');
+    const prev = prevSnap.data()!;
+    if (prev.userId !== uid) throw new HttpsError('permission-denied', 'Not your workout.');
+
+    // Read canonical profile for constraints and signals
+    const profile = await readCanonicalProfile(uid);
+
+    // Compute new progression level (base on prior + feedback)
+    const currentLevel =
+      (profile.system?.trainingLoadIndex ?? 0) > 0
+        ? Math.min(10, Math.max(1, Math.round((profile.system!.trainingLoadIndex / 900) + 1)))
+        : 5;
+
+    let adjustment = 0;
+    if (input.performanceRating >= 4 && input.completionRate >= 0.9) adjustment += 1;
+    if (input.performanceRating <= 2 || input.completionRate < 0.7) adjustment -= 1;
+    if (input.difficultyFeedback === 'too_easy') adjustment += 1;
+    if (input.difficultyFeedback === 'too_hard') adjustment -= 1;
+    if (input.timeActual > (prev.estimatedDuration ?? 45) * 1.3) adjustment -= 0;
+    if (input.timeActual < (prev.estimatedDuration ?? 45) * 0.8) adjustment += 0.5;
+
+    const nextLevel = Math.max(1, Math.min(10, Math.round(currentLevel + adjustment)));
+
+    const { content, usage } = await callModelJSON([
+      { role: 'system', content: buildSystemPrompt() },
+      {
+        role: 'user',
+        content: buildUserPromptForAdaptive({
+          previousWorkout: prev,
+          performanceRating: input.performanceRating,
+          completionRate: input.completionRate,
+          difficultyFeedback: input.difficultyFeedback,
+          timeActual: input.timeActual,
+          progressionLevel: nextLevel,
+        }),
       },
+    ]);
+
+    const json = extractJson(content);
+    const parsed = WorkoutPlanSchema.safeParse(JSON.parse(json));
+    if (!parsed.success) {
+      logger.error('Adaptive model JSON failed validation', { issues: parsed.error.issues });
+      throw new HttpsError('internal', 'Model returned invalid plan JSON.');
+    }
+    let plan = parsed.data;
+
+    // Enforce previous equipment
+    const allowedEquip = Array.isArray(prev.equipment) ? prev.equipment : profile.availableEquipment;
+    plan.equipment = pickAllowedEquipment(plan.equipment ?? [], allowedEquip);
+
+    plan.aiGenerated = true;
+    plan.personalizedFor = {
+      adaptedFrom: input.previousWorkoutId,
+      reason: input.difficultyFeedback,
+      fitnessLevel: profile.fitnessLevel,
     };
 
-  } catch (error) {
-    functions.logger.error("Error generating workout:", error);
-    throw new functions.https.HttpsError("internal", "Failed to generate workout");
-  }
-});
-
-// Helper function to calculate user's progression level
-function calculateProgressionLevel(workoutHistory: any[], fitnessLevel: string): number {
-  if (workoutHistory.length === 0) {
-    return fitnessLevel === 'beginner' ? 1 : fitnessLevel === 'intermediate' ? 4 : 7;
-  }
-
-  const completedWorkouts = workoutHistory.filter(w => w.rating && w.rating >= 3).length;
-  const avgRating = workoutHistory.reduce((sum, w) => sum + (w.rating || 0), 0) / workoutHistory.length;
-
-  let baseLevel = fitnessLevel === 'beginner' ? 1 : fitnessLevel === 'intermediate' ? 4 : 7;
-
-  // Adjust based on workout frequency and satisfaction
-  if (completedWorkouts >= 5 && avgRating >= 4) baseLevel += 1;
-  if (completedWorkouts >= 10 && avgRating >= 4.5) baseLevel += 1;
-
-  return Math.min(10, Math.max(1, baseLevel));
-}
-
-// Helper function to identify frequently used exercises
-function getFrequentExercises(workoutHistory: any[]): string[] {
-  const exerciseCount: { [key: string]: number } = {};
-
-  workoutHistory.forEach(workout => {
-    workout.exercises?.forEach((exerciseId: string) => {
-      exerciseCount[exerciseId] = (exerciseCount[exerciseId] || 0) + 1;
-    });
-  });
-
-  return Object.entries(exerciseCount)
-    .filter(([_, count]) => count >= 3)
-    .map(([exerciseId, _]) => exerciseId);
-}
-
-function createAdvancedWorkoutPrompt(
-  request: WorkoutGenerationRequest,
-  workoutHistory: any[],
-  progressMetrics: any[],
-  progressionLevel: number,
-  frequentExercises: string[]
-): string {
-  const historyContext = workoutHistory.length > 0
-    ? `Recent workout history (last 10 sessions): ${JSON.stringify(workoutHistory.slice(0, 5))}`
-    : "No previous workout history available.";
-
-  const progressContext = progressMetrics.length > 0
-    ? `Recent progress metrics: ${JSON.stringify(progressMetrics.slice(0, 3))}`
-    : "No progress metrics available.";
-
-  const frequentExerciseContext = frequentExercises.length > 0
-    ? `Frequently used exercises to vary from: ${frequentExercises.join(", ")}`
-    : "No exercise repetition patterns to avoid.";
-
-  const timeOfDay = request.timeCommitment.preferredTimes.length > 0
-    ? request.timeCommitment.preferredTimes[0]
-    : "any time";
-
-  return `
-Generate a highly personalized, progressive workout plan with the following comprehensive profile:
-
-🏋️ USER PROFILE:
-- Fitness Level: ${request.fitnessLevel} (Progression Level: ${progressionLevel}/10)
-- Primary Goals: ${request.fitnessGoals.join(", ")}
-- Available Equipment: ${request.availableEquipment.join(", ")}
-- Session Duration: ${request.timeCommitment.minutesPerSession} minutes
-- Workout Type: ${request.workoutType}
-- Intensity Preference: ${request.preferences.intensity}
-- Training Frequency: ${request.timeCommitment.daysPerWeek} days/week
-- Preferred Time: ${timeOfDay}
-- Injuries/Limitations: ${request.preferences.injuriesOrLimitations.join(", ") || "None"}
-- Focus Areas: ${request.focusAreas?.join(", ") || "General fitness"}
-
-📊 PERSONALIZATION DATA:
-${historyContext}
-
-${progressContext}
-
-${frequentExerciseContext}
-
-🎯 WORKOUT REQUIREMENTS:
-1. **Progressive Challenge**: Design for progression level ${progressionLevel}/10
-2. **Equipment Constraints**: Use ONLY the specified equipment
-3. **Time Optimization**: Fit perfectly within ${request.timeCommitment.minutesPerSession} minutes
-4. **Safety First**: Account for all injuries and limitations
-5. **Variety**: Avoid overused exercises, introduce new movements
-6. **Goal Alignment**: Directly support the user's fitness goals
-7. **Recovery Balance**: Include appropriate rest periods
-8. **Motivation**: Create an engaging, achievable challenge
-
-📋 REQUIRED JSON STRUCTURE:
-{
-  "name": "Motivational workout name",
-  "description": "Engaging description highlighting benefits",
-  "type": "${request.workoutType}",
-  "difficulty": "${request.fitnessLevel}",
-  "estimatedDuration": ${request.timeCommitment.minutesPerSession},
-  "calorieEstimate": 250,
-  "motivationalQuote": "Inspiring fitness quote",
-  "warmUp": [
-    {
-      "name": "Warm-up exercise",
-      "description": "Purpose and benefits",
-      "instructions": ["Clear step-by-step instructions"],
-      "targetMuscles": ["muscles being prepared"],
-      "equipment": ["required equipment"],
-      "difficulty": "${request.fitnessLevel}",
-      "sets": 1,
-      "duration": 30,
-      "restTime": 0,
-      "tips": ["Form and safety tips"],
-      "formCues": ["Key movement cues"]
-    }
-  ],
-  "exercises": [
-    {
-      "name": "Exercise name",
-      "description": "Exercise purpose and benefits",
-      "instructions": ["Detailed step-by-step instructions"],
-      "targetMuscles": ["primary", "secondary"],
-      "equipment": ["required equipment"],
-      "difficulty": "${request.fitnessLevel}",
-      "sets": 3,
-      "reps": 12,
-      "duration": null,
-      "restTime": 60,
-      "tips": ["Safety and form tips"],
-      "formCues": ["Critical form points"],
-      "progressionNotes": "How to make harder/easier",
-      "alternatives": ["Alternative exercises if needed"]
-    }
-  ],
-  "coolDown": [
-    {
-      "name": "Cool-down exercise",
-      "description": "Recovery purpose",
-      "instructions": ["Relaxation instructions"],
-      "targetMuscles": ["muscles being stretched"],
-      "equipment": ["required equipment"],
-      "difficulty": "beginner",
-      "sets": 1,
-      "duration": 30,
-      "restTime": 0,
-      "tips": ["Relaxation tips"],
-      "formCues": ["Breathing and posture cues"]
-    }
-  ],
-  "equipment": ["all equipment used"],
-  "targetMuscles": ["all muscles targeted"],
-  "progressionTips": ["How to progress this workout over time"]
-}
-
-🔥 MAKE IT AMAZING: Create a workout that's challenging but achievable, varied but focused, and perfectly tailored to this user's journey!
-`;
-}
-
-// Generate adaptive workout based on previous performance
-export const generateAdaptiveWorkout = functions.https.onCall(async (data: {
-  previousWorkoutId: string;
-  performanceRating: number; // 1-5 scale
-  completionRate: number; // 0-1 scale
-  difficultyFeedback: "too_easy" | "just_right" | "too_hard";
-  timeActual: number; // actual time taken in minutes
-}, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "User must be authenticated");
-  }
-
-  const userId = context.auth.uid;
-
-  try {
-    // Get the previous workout
-    const previousWorkout = await db.collection("workoutPlans").doc(data.previousWorkoutId).get();
-    if (!previousWorkout.exists) {
-      throw new Error("Previous workout not found");
-    }
-
-    const workoutData = previousWorkout.data();
-
-    // Get user profile for baseline
-    const userProfile = await db.collection("userProfiles").doc(userId).get();
-    if (!userProfile.exists) {
-      throw new Error("User profile not found");
-    }
-
-    const profile = userProfile.data();
-
-    // Calculate adaptation parameters
-    const adaptations = calculateWorkoutAdaptations(data, workoutData, profile);
-
-    // Generate adapted workout
-    const adaptedRequest = {
-      ...profile,
-      workoutType: workoutData.type,
-      progressionLevel: adaptations.newProgressionLevel,
-      focusAreas: adaptations.focusAreas,
-    };
-
-    // Create adaptive prompt
-    const prompt = createAdaptiveWorkoutPrompt(adaptedRequest, data, workoutData, adaptations);
-
-    const openai = getOpenAI();
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: "You are an adaptive fitness AI that creates progressive workouts based on user performance and feedback. Focus on optimal progression and personalization."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      temperature: 0.8,
-      max_tokens: 3000,
+    const dedupeKey = digest({
+      uid,
+      adaptedFrom: input.previousWorkoutId,
+      level: nextLevel,
+      equip: plan.equipment,
     });
 
-    const aiResponse = completion.choices[0]?.message?.content;
-    if (!aiResponse) {
-      throw new Error("No response from AI");
-    }
-
-    const adaptedWorkout = JSON.parse(aiResponse);
-    adaptedWorkout.aiGenerated = true;
-    adaptedWorkout.adaptedFrom = data.previousWorkoutId;
-    adaptedWorkout.adaptationReason = adaptations.reason;
-
-    // Save adapted workout
-    const workoutRef = await db.collection("workoutPlans").add({
-      ...adaptedWorkout,
-      userId,
+    const ref = await db.collection('workoutPlans').add({
+      ...plan,
+      userId: uid,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      source: 'ai-adaptive',
+      model: OPENAI_MODEL,
+      usage: usage ? { ...usage } : undefined,
+      profileDigest: profile.system?.profileDigest ?? null,
+      dedupeKey,
+      status: 'ready',
+      adaptedFrom: input.previousWorkoutId,
     });
+
+    logger.info('Adaptive workout generated', { uid, planId: ref.id, model: OPENAI_MODEL });
 
     return {
       success: true,
-      workoutPlan: {
-        id: workoutRef.id,
-        ...adaptedWorkout,
+      workoutPlan: { id: ref.id, ...plan },
+      adaptations: {
+        newProgressionLevel: nextLevel,
+        reason: input.difficultyFeedback,
       },
-      adaptations: adaptations,
+      dedupeKey,
     };
-
-  } catch (error) {
-    functions.logger.error("Error generating adaptive workout:", error);
-    throw new functions.https.HttpsError("internal", "Failed to generate adaptive workout");
-  }
-});
-
-// Helper function to calculate workout adaptations
-function calculateWorkoutAdaptations(feedback: any, previousWorkout: any, userProfile: any) {
-  let progressionAdjustment = 0;
-  let intensityAdjustment = 0;
-  let focusAreas: string[] = [];
-  let reason = "";
-
-  // Adjust based on performance rating
-  if (feedback.performanceRating >= 4 && feedback.completionRate >= 0.9) {
-    progressionAdjustment = 1;
-    reason += "Excellent performance, increasing difficulty. ";
-  } else if (feedback.performanceRating <= 2 || feedback.completionRate < 0.7) {
-    progressionAdjustment = -1;
-    reason += "Challenging workout, reducing difficulty. ";
-  }
-
-  // Adjust based on difficulty feedback
-  if (feedback.difficultyFeedback === "too_easy") {
-    progressionAdjustment += 1;
-    intensityAdjustment = 0.2;
-    reason += "User found workout too easy, increasing challenge. ";
-  } else if (feedback.difficultyFeedback === "too_hard") {
-    progressionAdjustment -= 1;
-    intensityAdjustment = -0.2;
-    reason += "User found workout too hard, reducing intensity. ";
-  }
-
-  // Adjust based on time variance
-  const timeVariance = feedback.timeActual / previousWorkout.estimatedDuration;
-  if (timeVariance > 1.3) {
-    reason += "Workout took longer than expected, optimizing efficiency. ";
-  } else if (timeVariance < 0.8) {
-    reason += "Workout completed quickly, adding complexity. ";
-    progressionAdjustment += 0.5;
-  }
-
-  const currentLevel = userProfile.progressionLevel || 5;
-  const newProgressionLevel = Math.max(1, Math.min(10, currentLevel + progressionAdjustment));
-
-  return {
-    newProgressionLevel,
-    intensityAdjustment,
-    focusAreas,
-    reason: reason.trim(),
-  };
-}
-
-// Create adaptive workout prompt
-function createAdaptiveWorkoutPrompt(request: any, feedback: any, previousWorkout: any, adaptations: any): string {
-  return `
-Create an adaptive workout based on user performance feedback:
-
-PREVIOUS WORKOUT ANALYSIS:
-- Workout: ${previousWorkout.name}
-- User Rating: ${feedback.performanceRating}/5
-- Completion Rate: ${Math.round(feedback.completionRate * 100)}%
-- Difficulty Feedback: ${feedback.difficultyFeedback}
-- Time Variance: ${Math.round((feedback.timeActual / previousWorkout.estimatedDuration) * 100)}%
-
-ADAPTATION STRATEGY:
-- Progression Level: ${request.progressionLevel}/10
-- Intensity Adjustment: ${adaptations.intensityAdjustment > 0 ? '+' : ''}${adaptations.intensityAdjustment}
-- Reason: ${adaptations.reason}
-
-Generate an improved workout that addresses the feedback while maintaining user engagement and progressive overload.
-Use the same JSON structure as before, but optimize based on the performance data.
-`;
-}
+  },
+);

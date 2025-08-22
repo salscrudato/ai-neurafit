@@ -7,7 +7,7 @@ import {
   PlayIcon,
   ClockIcon,
   UserIcon,
-  ArrowRightOnRectangleIcon,
+  ArrowRightStartOnRectangleIcon,
   Cog6ToothIcon,
   BellIcon,
 } from '@heroicons/react/24/outline';
@@ -131,7 +131,7 @@ export const Navigation: React.FC = () => {
       <motion.nav
         role="navigation"
         aria-label="Primary"
-        className="hidden md:flex md:fixed md:top-0 md:left-0 md:right-0 md:z-50 bg-white/95 backdrop-blur-xl border-b border-neutral-200/50 shadow-elevated"
+        className="hidden md:flex md:fixed md:top-0 md:left-0 md:right-0 md:z-50 bg-white/95 backdrop-blur-xl border-b border-neutral-200/50 shadow-sm"
         initial={{ y: shouldReduceMotion ? 0 : -100 }}
         animate={{ y: 0 }}
         transition={{ duration: shouldReduceMotion ? 0 : 0.3 }}
@@ -166,7 +166,7 @@ export const Navigation: React.FC = () => {
                         onPointerEnter={() => prefetchRoute(item.href)}
                         className={`relative px-6 py-3 rounded-2xl text-sm font-semibold transition-all duration-300 flex items-center group ${
                           active
-                            ? 'bg-gradient-primary text-white shadow-glow-primary'
+                            ? 'bg-energy-500 text-white shadow-sm'
                             : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
                         }`}
                         title={item.description}
@@ -298,7 +298,7 @@ export const Navigation: React.FC = () => {
                   whileHover={{ scale: shouldReduceMotion ? 1 : 1.05 }}
                   whileTap={{ scale: shouldReduceMotion ? 1 : 0.95 }}
                 >
-                  <ArrowRightOnRectangleIcon
+                  <ArrowRightStartOnRectangleIcon
                     aria-hidden
                     className="w-5 h-5 group-hover:scale-110 transition-transform duration-200"
                   />
@@ -333,7 +333,7 @@ export const Navigation: React.FC = () => {
                   onTouchStart={() => prefetchRoute(item.href)}
                   className={`flex flex-col items-center py-3 px-2 text-xs font-semibold transition-all duration-300 rounded-2xl min-h-[68px] justify-center relative ${
                     active
-                      ? 'text-white bg-gradient-primary shadow-glow-primary'
+                      ? 'text-white bg-energy-500 shadow-sm'
                       : 'text-neutral-600 active:text-neutral-900 active:bg-neutral-100'
                   }`}
                   title={item.description}

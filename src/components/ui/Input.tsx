@@ -101,11 +101,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     default: tokenDefault,
     filled: tokenFilled,
     outlined:
-      'border-2 border-neutral-300 bg-transparent hover:border-neutral-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500',
+      'border-2 border-neutral-300 bg-transparent hover:border-neutral-400 focus:ring-2 focus:ring-energy-500 focus:border-energy-500',
     glass:
-      'border border-white/20 bg-white/10 backdrop-blur-md hover:bg-white/20 focus:ring-2 focus:ring-white/50 focus:border-white/30 text-white placeholder-white/60',
+      'border border-white/30 bg-white/80 backdrop-blur-md hover:bg-white/90 focus:ring-2 focus:ring-energy-500 focus:border-energy-500 text-neutral-900 placeholder-neutral-500',
     fitness:
-      'border border-primary-200 bg-gradient-to-r from-primary-50 to-white hover:from-primary-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-400',
+      'border border-energy-200 bg-gradient-to-r from-energy-50 to-white hover:from-energy-100 focus:ring-2 focus:ring-energy-500 focus:border-energy-400',
   };
 
   const stateVariant = () => {
