@@ -6,14 +6,19 @@ export const registerServiceWorker = async (): Promise<void> => {
       // Only register in production
       if (import.meta.env.PROD) {
         const registration = await navigator.serviceWorker.register('/sw.js');
-        console.log('SW registered: ', registration);
+        // Import logger dynamically to avoid circular dependencies
+        import('./loggers').then(({ pwa }) => {
+          pwa.serviceWorkerRegistered(registration.scope);
+        });
       } else {
         // In development, unregister any existing service workers
         await unregisterServiceWorkers();
-        console.log('Development mode: Service workers disabled');
       }
     } catch (error) {
-      console.log('SW registration failed: ', error);
+      // Import logger dynamically to avoid circular dependencies
+      import('./loggers').then(({ pwa }) => {
+        pwa.serviceWorkerError(error as Error);
+      });
     }
   }
 };
@@ -24,10 +29,12 @@ export const unregisterServiceWorkers = async (): Promise<void> => {
       const registrations = await navigator.serviceWorker.getRegistrations();
       for (const registration of registrations) {
         await registration.unregister();
-        console.log('SW unregistered: ', registration);
       }
     } catch (error) {
-      console.log('SW unregistration failed: ', error);
+      // Import logger dynamically to avoid circular dependencies
+      import('./loggers').then(({ pwa }) => {
+        pwa.serviceWorkerError(error as Error);
+      });
     }
   }
 };

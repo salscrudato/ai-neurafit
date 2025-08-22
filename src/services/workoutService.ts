@@ -44,7 +44,10 @@ export class WorkoutService {
       
       return result.data.workoutPlan;
     } catch (error: any) {
-      console.error('Error generating workout:', error);
+      // Import logger dynamically to avoid circular dependencies
+      import('../utils/loggers').then(({ workout }) => {
+        workout.generateFailure('', error);
+      });
       throw new Error(error.message || 'Failed to generate workout');
     }
   }
@@ -102,7 +105,9 @@ export class WorkoutService {
   ): Promise<void> {
     // This would update the workout session in Firestore
     // Implementation would go here
-    console.log('Completing workout session:', { sessionId, completedExercises, rating, feedback });
+    import('../utils/loggers').then(({ workout }) => {
+      workout.sessionComplete('', sessionId, 0, rating);
+    });
   }
 
   // Get workout history

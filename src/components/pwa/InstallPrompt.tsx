@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XMarkIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { Button } from '../ui/Button';
+import { pwa } from '../../utils/loggers';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -65,15 +66,15 @@ export const InstallPrompt: React.FC = () => {
       const { outcome } = await deferredPrompt.userChoice;
       
       if (outcome === 'accepted') {
-        console.log('User accepted the install prompt');
+        pwa.installAccepted();
       } else {
-        console.log('User dismissed the install prompt');
+        pwa.installRejected();
       }
-      
+
       setDeferredPrompt(null);
       setShowPrompt(false);
     } catch (error) {
-      console.error('Error showing install prompt:', error);
+      pwa.serviceWorkerError(error as Error);
     }
   };
 

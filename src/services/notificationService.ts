@@ -100,13 +100,12 @@ export class NotificationService {
   // Show local notification
   static async showNotification(options: NotificationOptions): Promise<void> {
     if (!this.hasPermission()) {
-      console.warn('Notification permission not granted');
       return;
     }
 
     try {
       const registration = await navigator.serviceWorker.ready;
-      
+
       const notificationOptions: NotificationOptions = {
         icon: '/neurafit-icon.svg',
         badge: '/neurafit-icon.svg',
@@ -117,7 +116,10 @@ export class NotificationService {
 
       await registration.showNotification(options.title, notificationOptions);
     } catch (error) {
-      console.error('Failed to show notification:', error);
+      // Import logger dynamically to avoid circular dependencies
+      import('../utils/loggers').then(({ errorBoundary }) => {
+        errorBoundary.errorCaught(error as Error, { context: 'NotificationService' });
+      });
     }
   }
 
@@ -127,7 +129,6 @@ export class NotificationService {
     const delay = time.getTime() - now.getTime();
 
     if (delay <= 0) {
-      console.warn('Cannot schedule notification in the past');
       return;
     }
 
@@ -215,12 +216,13 @@ export class NotificationService {
   private static async sendSubscriptionToServer(subscription: PushSubscription): Promise<void> {
     try {
       // In a real app, you'd send this to your backend
-      console.log('Sending subscription to server:', subscription);
-      
       // Store in localStorage for now
       localStorage.setItem('pushSubscription', JSON.stringify(subscription));
     } catch (error) {
-      console.error('Failed to send subscription to server:', error);
+      // Import logger dynamically to avoid circular dependencies
+      import('../utils/loggers').then(({ api }) => {
+        api.error('POST', '/push-subscription', error as Error);
+      });
     }
   }
 

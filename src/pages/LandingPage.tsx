@@ -61,13 +61,13 @@ const FeatureCard: React.FC<{ feature: Feature; index: number }> = ({ feature, i
   <motion.div
     {...fadeUp(index * 0.05)}
     viewport={{ once: true, margin: '-20% 0px -20% 0px' }}
-    className="group relative rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur-md p-6 shadow-sm hover:shadow-lg transition-shadow"
+    className="group relative rounded-2xl border border-black/5 bg-white/70 backdrop-blur-md p-6 shadow-sm hover:shadow-lg transition-shadow"
   >
-    <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary-100 dark:bg-primary-900/30">
-      <feature.icon className="h-6 w-6 text-primary-600 dark:text-primary-300" aria-hidden="true" />
+    <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary-100">
+      <feature.icon className="h-6 w-6 text-primary-600" aria-hidden="true" />
     </div>
-    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{feature.name}</h3>
-    <p className="mt-2 text-gray-600 dark:text-gray-300">{feature.description}</p>
+    <h3 className="text-lg font-semibold text-gray-900">{feature.name}</h3>
+    <p className="mt-2 text-gray-600">{feature.description}</p>
 
     {/* Subtle hover halo */}
     <div
@@ -88,23 +88,23 @@ const DemoWorkoutCard: React.FC = () => {
       className="relative w-full max-w-md mx-auto md:mx-0 rounded-2xl bg-gradient-glass backdrop-blur-md border border-white/20 shadow-glass p-5"
       aria-label="Preview of an AI-generated workout"
     >
-      <div className="flex items-center gap-2 text-sm font-medium text-primary-700 dark:text-primary-300">
+      <div className="flex items-center gap-2 text-sm font-medium text-primary-700">
         <SparklesIcon className="h-4 w-4" aria-hidden="true" />
         <span className="bg-gradient-primary bg-clip-text text-transparent">AI Plan • Today</span>
       </div>
 
-      <h3 className="mt-2 text-xl font-semibold text-neutral-900 dark:text-white">
+      <h3 className="mt-2 text-xl font-semibold text-neutral-900">
         25‑min Upper Body Power
       </h3>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-        <span className="inline-flex items-center gap-1 rounded-full border border-black/10 dark:border-white/20 px-2.5 py-1">
+        <span className="inline-flex items-center gap-1 rounded-full border border-black/10 px-2.5 py-1">
           <ClockIcon className="h-4 w-4" aria-hidden="true" /> 25 min
         </span>
-        <span className="inline-flex items-center gap-1 rounded-full border border-black/10 dark:border-white/20 px-2.5 py-1">
+        <span className="inline-flex items-center gap-1 rounded-full border border-black/10 px-2.5 py-1">
           <ChartBarIcon className="h-4 w-4" aria-hidden="true" /> Moderate
         </span>
-        <span className="inline-flex items-center gap-1 rounded-full border border-black/10 dark:border-white/20 px-2.5 py-1">
+        <span className="inline-flex items-center gap-1 rounded-full border border-black/10 px-2.5 py-1">
           <DevicePhoneMobileIcon className="h-4 w-4" aria-hidden="true" /> Minimal gear
         </span>
       </div>
@@ -148,7 +148,7 @@ export const LandingPage: React.FC = () => {
   const reduceMotion = useReducedMotion();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-primary-50/20 dark:from-neutral-950 dark:via-neutral-950 dark:to-primary-950/20 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-primary-50/20 relative overflow-hidden">
       {/* Skip link for keyboard users */}
       <a
         href="#main"
@@ -159,7 +159,7 @@ export const LandingPage: React.FC = () => {
 
       {/* Decorative background */}
       <div className="absolute inset-0" aria-hidden="true">
-        <div className="absolute inset-0 bg-mesh-gradient opacity-20 dark:opacity-30" />
+        <div className="absolute inset-0 bg-mesh-gradient opacity-20" />
         <motion.div
           animate={
             reduceMotion
@@ -187,7 +187,7 @@ export const LandingPage: React.FC = () => {
             {...fadeUp()}
             className="text-center"
           >
-            <div className="inline-flex items-center px-5 py-2.5 rounded-full bg-gradient-glass backdrop-blur-md border border-white/20 text-primary-700 dark:text-primary-300 text-sm font-semibold mb-7 shadow-glass">
+            <div className="inline-flex items-center px-5 py-2.5 rounded-full bg-gradient-glass backdrop-blur-md border border-white/20 text-primary-700 text-sm font-semibold mb-7 shadow-glass">
               <SparklesIcon className="w-4 h-4 mr-2 text-primary-500" aria-hidden="true" />
               <span className="bg-gradient-primary bg-clip-text text-transparent">
                 AI‑Powered Fitness, Personalized
@@ -195,7 +195,7 @@ export const LandingPage: React.FC = () => {
               <span className="ml-2 inline-flex h-2 w-2 rounded-full bg-primary-500 animate-pulse" aria-hidden="true" />
             </div>
 
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-display font-bold text-neutral-900 dark:text-white leading-tight tracking-tight">
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-display font-bold text-neutral-900 leading-tight tracking-tight">
               Your AI Fitness
               <br />
               <span className="bg-gradient-hero bg-clip-text text-transparent animate-gradient bg-[length:200%_200%]">
@@ -203,7 +203,7 @@ export const LandingPage: React.FC = () => {
               </span>
             </h1>
 
-            <p className="mt-6 text-lg md:text-xl text-neutral-600 dark:text-neutral-300 mx-auto max-w-3xl leading-relaxed">
+            <p className="mt-6 text-lg md:text-xl text-neutral-600 mx-auto max-w-3xl leading-relaxed">
               Transform your training with{' '}
               <span className="font-semibold bg-gradient-primary bg-clip-text text-transparent">adaptive workouts</span>{' '}
               tuned to your goals, schedule, and equipment—evolving automatically as you do.
@@ -230,10 +230,10 @@ export const LandingPage: React.FC = () => {
               {...fadeUp(0.25)}
               className="text-left md:text-start"
             >
-              <h2 className="text-2xl md:text-3xl font-bold text-neutral-900 dark:text-white">
+              <h2 className="text-2xl md:text-3xl font-bold text-neutral-900">
                 Smarter plans. Better adherence. Real progress.
               </h2>
-              <p className="mt-3 text-neutral-600 dark:text-neutral-300">
+              <p className="mt-3 text-neutral-600">
                 NeuraFit removes guesswork: the right movements, rep schemes, and rest—auto‑calibrated
                 to your performance and recovery signals. Train with intent, not intuition.
               </p>
@@ -244,17 +244,17 @@ export const LandingPage: React.FC = () => {
 
       <main id="main" className="relative z-10">
         {/* Features */}
-        <section id="features" className="py-20 bg-gray-50 dark:bg-neutral-900/50">
+        <section id="features" className="py-20 bg-gray-50">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <motion.div
               {...fadeUp()}
               viewport={{ once: true }}
               className="text-center mb-14"
             >
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
                 Why Choose NeuraFit?
               </h2>
-              <p className="mt-3 text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+              <p className="mt-3 text-lg text-gray-600 max-w-2xl mx-auto">
                 Experience the future of fitness with personalization that makes every minute count.
               </p>
             </motion.div>
@@ -268,13 +268,13 @@ export const LandingPage: React.FC = () => {
         </section>
 
         {/* CTA */}
-        <section className="py-20 bg-white dark:bg-neutral-950">
+        <section className="py-20 bg-white">
           <div className="mx-auto max-w-4xl text-center px-4 sm:px-6 lg:px-8">
             <motion.div {...fadeUp()} viewport={{ once: true }}>
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
                 Ready to Transform Your Fitness?
               </h2>
-              <p className="mt-3 text-lg text-gray-600 dark:text-gray-300">
+              <p className="mt-3 text-lg text-gray-600">
                 Join athletes, creators, and busy professionals training with AI‑guided precision.
               </p>
               <div className="mt-8 flex justify-center">

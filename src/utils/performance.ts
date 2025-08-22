@@ -99,14 +99,9 @@ class PerformanceMonitor {
       timestamp: Date.now(),
       type
     };
-    
+
     this.metrics.push(metric);
-    
-    // Log in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`Performance: ${name} = ${value.toFixed(2)}ms`);
-    }
-    
+
     // Send to analytics in production
     if (process.env.NODE_ENV === 'production') {
       this.sendToAnalytics(metric);
@@ -201,11 +196,7 @@ export const analyzeBundleSize = () => {
   if (process.env.NODE_ENV === 'development') {
     const scripts = Array.from(document.querySelectorAll('script[src]'));
     const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
-    
-    console.group('Bundle Analysis');
-    console.log('Scripts:', scripts.length);
-    console.log('Stylesheets:', styles.length);
-    
+
     // Estimate bundle size (rough approximation)
     let totalSize = 0;
     scripts.forEach((script: any) => {
@@ -214,9 +205,11 @@ export const analyzeBundleSize = () => {
         totalSize += 100; // KB estimate per script
       }
     });
-    
-    console.log(`Estimated bundle size: ~${totalSize}KB`);
-    console.groupEnd();
+
+    // Use performance logger instead of console
+    import('./loggers').then(({ performance }) => {
+      performance.bundleAnalysis(scripts.length, styles.length, totalSize);
+    });
   }
 };
 

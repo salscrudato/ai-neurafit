@@ -268,11 +268,9 @@ export class OfflineService {
   // Sync workout session data
   private async syncWorkoutSession(data: any): Promise<void> {
     // In a real app, this would make API calls to your backend
-    console.log('Syncing workout session:', data);
-    
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     // Here you would typically:
     // 1. Send the workout session data to your backend
     // 2. Update any local caches
@@ -281,7 +279,6 @@ export class OfflineService {
 
   // Sync progress update
   private async syncProgressUpdate(data: any): Promise<void> {
-    console.log('Syncing progress update:', data);
     await new Promise(resolve => setTimeout(resolve, 200));
   }
 

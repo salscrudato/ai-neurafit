@@ -15,6 +15,8 @@ import { auth, db } from '../lib/firebase';
 import { getRecommendedAuthMethod, isPopupBlocked } from '../utils/authUtils';
 import type { User, UserProfile } from '../types';
 
+import { auth as authLogger } from '../utils/loggers';
+
 export interface SignUpData {
   email: string;
   password: string;
@@ -31,22 +33,21 @@ export class AuthService {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
-      
+
       // Update the user's display name
       await updateProfile(firebaseUser, { displayName });
-      
-      // Create user document in Firestore
+
+      // Don't create user document here - let the Firebase Function handle it
+      // This avoids race conditions and conflicts
       const user: User = {
         id: firebaseUser.uid,
         email: firebaseUser.email!,
         displayName,
         photoURL: firebaseUser.photoURL || undefined,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: new Date(firebaseUser.metadata.creationTime!),
+        updatedAt: new Date(firebaseUser.metadata.lastSignInTime!),
       };
-      
-      await setDoc(doc(db, 'users', firebaseUser.uid), user);
-      
+
       return user;
     } catch (error: any) {
       throw new Error(this.getErrorMessage(error.code));
@@ -54,12 +55,16 @@ export class AuthService {
   }
 
   static async signIn({ email, password }: SignInData): Promise<User> {
+    authLogger.signInAttempt(email, 'email');
+
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
-      
+
+      authLogger.signInSuccess(firebaseUser.uid, firebaseUser.email!, 'email');
       return this.mapFirebaseUser(firebaseUser);
     } catch (error: any) {
+      authLogger.signInFailure(email, error, 'email');
       throw new Error(this.getErrorMessage(error.code));
     }
   }
@@ -100,26 +105,13 @@ export class AuthService {
       }
 
       const firebaseUser = userCredential.user;
+      authLogger.signInSuccess(firebaseUser.uid, firebaseUser.email!, 'google');
 
-      // Check if user document exists, create if not
-      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-
-      if (!userDoc.exists()) {
-        const user: User = {
-          id: firebaseUser.uid,
-          email: firebaseUser.email!,
-          displayName: firebaseUser.displayName || undefined,
-          photoURL: firebaseUser.photoURL || undefined,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-
-        await setDoc(doc(db, 'users', firebaseUser.uid), user);
-        return user;
-      }
-
+      // Let the Firebase Function handle user document creation
+      // Just return the mapped user data
       return this.mapFirebaseUser(firebaseUser);
     } catch (error: any) {
+      authLogger.signInFailure('', error, 'google');
       throw new Error(this.getErrorMessage(error.code));
     }
   }
@@ -127,29 +119,19 @@ export class AuthService {
   static async handleRedirectResult(): Promise<User | null> {
     try {
       const result = await getRedirectResult(auth);
-      if (!result) return null;
 
-      const firebaseUser = result.user;
-
-      // Check if user document exists, create if not
-      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-
-      if (!userDoc.exists()) {
-        const user: User = {
-          id: firebaseUser.uid,
-          email: firebaseUser.email!,
-          displayName: firebaseUser.displayName || undefined,
-          photoURL: firebaseUser.photoURL || undefined,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-
-        await setDoc(doc(db, 'users', firebaseUser.uid), user);
-        return user;
+      if (!result) {
+        return null;
       }
 
+      const firebaseUser = result.user;
+      authLogger.signInSuccess(firebaseUser.uid, firebaseUser.email!, 'google');
+
+      // Let the Firebase Function handle user document creation
+      // Just return the mapped user data
       return this.mapFirebaseUser(firebaseUser);
     } catch (error: any) {
+      authLogger.error('Error processing redirect result', error);
       throw new Error(this.getErrorMessage(error.code));
     }
   }
@@ -166,6 +148,7 @@ export class AuthService {
     try {
       await sendPasswordResetEmail(auth, email);
     } catch (error: any) {
+      authLogger.error('Failed to send password reset email', error, { email });
       throw new Error(this.getErrorMessage(error.code));
     }
   }

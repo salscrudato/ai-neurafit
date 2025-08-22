@@ -69,11 +69,15 @@ export const useMemoryMonitoring = (intervalMs: number = 30000) => {
       performanceMonitor.recordMetric('memory-used-mb', memory.usedJSHeapSize / 1024 / 1024);
       performanceMonitor.recordMetric('memory-total-mb', memory.totalJSHeapSize / 1024 / 1024);
       
-      // Warn if memory usage is high
+      // Log memory usage
       const usagePercent = (memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100;
-      if (usagePercent > 80) {
-        console.warn(`High memory usage: ${usagePercent.toFixed(1)}%`);
-      }
+      import('../utils/loggers').then(({ performance }) => {
+        performance.memoryUsage(
+          memory.usedJSHeapSize / 1024 / 1024,
+          memory.totalJSHeapSize / 1024 / 1024,
+          memory.jsHeapSizeLimit / 1024 / 1024
+        );
+      });
     };
 
     const interval = setInterval(monitorMemory, intervalMs);

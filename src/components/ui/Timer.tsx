@@ -167,7 +167,7 @@ export const Timer: React.FC<TimerProps> = ({
                 stroke="currentColor"
                 strokeWidth="6"
                 fill="none"
-                className="text-neutral-200 dark:text-neutral-700"
+                className="text-neutral-200"
               />
               {/* Progress circle */}
               <motion.circle
