@@ -1,7 +1,7 @@
 // src/components/workout/WorkoutGenerationModal.tsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { Dialog } from '@headlessui/react';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   XMarkIcon,
   SparklesIcon,
@@ -10,6 +10,7 @@ import {
   WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
+import { fadeUp } from '../../utils/animations';
 
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -88,7 +89,6 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
   onClose,
   userProfile,
 }) => {
-  const reduceMotion = useReducedMotion();
   const navigate = useNavigate();
 
   const { user } = useAuthStore();
@@ -295,10 +295,10 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
               {!generatedWorkout ? (
                 <motion.div
                   key="selection"
-                  initial={{ opacity: 0, y: reduceMotion ? 0 : 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: reduceMotion ? 0 : -20 }}
-                  transition={{ duration: reduceMotion ? 0 : 0.25 }}
+                  variants={fadeUp()}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
                 >
                   {/* 1) Type */}
                   <section className="mb-6">
@@ -482,10 +482,10 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
                 /* ---------------------------- Generated Result ---------------------------- */
                 <motion.div
                   key="result"
-                  initial={{ opacity: 0, y: reduceMotion ? 0 : 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: reduceMotion ? 0 : -20 }}
-                  transition={{ duration: reduceMotion ? 0 : 0.25 }}
+                  variants={fadeUp()}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
                 >
                   <div className="text-center mb-6">
                     <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-success-100">

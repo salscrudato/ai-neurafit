@@ -8,6 +8,7 @@ import {
   DevicePhoneMobileIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '../components/ui/Button';
+import { fadeUp } from '../utils/animations';
 
 /**
  * LandingPage
@@ -20,7 +21,7 @@ import { Button } from '../components/ui/Button';
 type Feature = {
   name: string;
   description: string;
-  icon: (props: React.ComponentProps<'svg'>) => JSX.Element;
+  icon: React.ComponentType<React.ComponentProps<'svg'>>;
 };
 
 const features: Feature[] = [
@@ -50,16 +51,13 @@ const features: Feature[] = [
   },
 ];
 
-// Reusable motion helpers
-const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 24 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.6, ease: 'easeOut', delay },
-});
+
 
 const FeatureCard: React.FC<{ feature: Feature; index: number }> = ({ feature, index }) => (
   <motion.div
-    {...fadeUp(index * 0.05)}
+    variants={fadeUp(index * 0.05)}
+    initial="initial"
+    animate="animate"
     viewport={{ once: true, margin: '-20% 0px -20% 0px' }}
     className="group relative rounded-2xl border border-black/5 bg-white/70 backdrop-blur-md p-6 shadow-sm hover:shadow-lg transition-shadow"
   >
@@ -84,7 +82,9 @@ const FeatureCard: React.FC<{ feature: Feature; index: number }> = ({ feature, i
 const DemoWorkoutCard: React.FC = () => {
   return (
     <motion.div
-      {...fadeUp(0.2)}
+      variants={fadeUp(0.2)}
+      initial="initial"
+      animate="animate"
       className="relative w-full max-w-md mx-auto md:mx-0 rounded-2xl bg-gradient-glass backdrop-blur-md border border-white/20 shadow-glass p-5"
       aria-label="Preview of an AI-generated workout"
     >
@@ -184,7 +184,9 @@ export const LandingPage: React.FC = () => {
       <header className="relative z-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-20 pb-12 md:pt-28 md:pb-20">
           <motion.div
-            {...fadeUp()}
+            variants={fadeUp()}
+            initial="initial"
+            animate="animate"
             className="text-center"
           >
             <div className="inline-flex items-center px-5 py-2.5 rounded-full bg-gradient-glass backdrop-blur-md border border-white/20 text-primary-700 text-sm font-semibold mb-7 shadow-glass">
@@ -227,7 +229,9 @@ export const LandingPage: React.FC = () => {
           <div className="mt-12 md:mt-16 grid md:grid-cols-2 gap-8 items-center">
             <DemoWorkoutCard />
             <motion.div
-              {...fadeUp(0.25)}
+              variants={fadeUp(0.25)}
+              initial="initial"
+              animate="animate"
               className="text-left md:text-start"
             >
               <h2 className="text-2xl md:text-3xl font-bold text-neutral-900">
@@ -247,7 +251,9 @@ export const LandingPage: React.FC = () => {
         <section id="features" className="py-20 bg-gray-50">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <motion.div
-              {...fadeUp()}
+              variants={fadeUp()}
+              initial="initial"
+              animate="animate"
               viewport={{ once: true }}
               className="text-center mb-14"
             >
@@ -270,7 +276,12 @@ export const LandingPage: React.FC = () => {
         {/* CTA */}
         <section className="py-20 bg-white">
           <div className="mx-auto max-w-4xl text-center px-4 sm:px-6 lg:px-8">
-            <motion.div {...fadeUp()} viewport={{ once: true }}>
+            <motion.div
+              variants={fadeUp()}
+              initial="initial"
+              animate="animate"
+              viewport={{ once: true }}
+            >
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
                 Ready to Transform Your Fitness?
               </h2>

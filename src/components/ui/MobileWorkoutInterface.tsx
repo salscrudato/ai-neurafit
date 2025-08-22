@@ -10,7 +10,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { Timer } from './Timer';
 import { Button, StartWorkoutButton } from './Button';
-import { IntensityBadge, WorkoutTypeBadge } from './Badge';
+import { Badge } from './Badge';
 import { Progress } from './Progress';
 import { ExerciseInstructionModal, RestModal } from './Modal';
 
@@ -152,8 +152,8 @@ export const MobileWorkoutInterface: React.FC<MobileWorkoutInterfaceProps> = ({
             {/* Exercise Header */}
             <div className="text-center mb-8">
               <div className="flex items-center justify-center space-x-2 mb-4">
-                <WorkoutTypeBadge type={currentExercise.type} size="sm">{currentExercise.type}</WorkoutTypeBadge>
-                <IntensityBadge intensity={currentExercise.intensity} size="sm">{currentExercise.intensity}</IntensityBadge>
+                <Badge variant="primary" size="sm">{currentExercise.type}</Badge>
+                <Badge variant="secondary" size="sm">{currentExercise.intensity}</Badge>
               </div>
               
               <h2 className="text-3xl font-bold text-neutral-900 mb-2">

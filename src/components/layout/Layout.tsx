@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Navigation } from './Navigation';
 import { SkipLink } from '../ui/AccessibilityProvider';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { pageVariants, pageTransition } from '../../utils/animations';
 
 export const Layout: React.FC = () => {
   const location = useLocation();
@@ -20,11 +21,9 @@ export const Layout: React.FC = () => {
         animate: { opacity: 1, y: 0 },
         exit: { opacity: 1, y: 0 },
       }
-    : {
-        initial: { opacity: 0, y: 12 },
-        animate: { opacity: 1, y: 0, transition: { duration: 0.25, ease: 'easeOut' } },
-        exit: { opacity: 0, y: -8, transition: { duration: 0.2, ease: 'easeIn' } },
-      };
+    : pageVariants;
+
+  const transition = reduceMotion ? undefined : pageTransition;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-primary-50/20 relative overflow-hidden">
@@ -50,9 +49,11 @@ export const Layout: React.FC = () => {
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={location.pathname}
-                initial={variants.initial}
-                animate={variants.animate}
-                exit={variants.exit}
+                variants={variants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={transition}
               >
                 <Outlet />
               </motion.div>

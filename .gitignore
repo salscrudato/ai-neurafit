@@ -20,6 +20,12 @@ dist-ssr
 .env.production.local
 functions/.env
 
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -30,3 +36,9 @@ functions/.env
 *.njsproj
 *.sln
 *.sw?
+
+# Development files
+users.json
+generate-icons.html
+*.tmp
+*.temp

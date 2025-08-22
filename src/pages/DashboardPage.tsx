@@ -24,8 +24,6 @@ import {
 } from '../components/ui/Card';
 import {
   Badge,
-  WorkoutTypeBadge,
-  IntensityBadge,
   AchievementBadge,
   StreakBadge,
 } from '../components/ui/Badge';
@@ -463,7 +461,6 @@ export const DashboardPage: React.FC = () => {
                 transition={{ duration: reduceMotion ? 0 : 0.4, delay: 0.1 * index }}
               >
                 <WorkoutCard
-                  workoutType={workout.type as any}
                   className="h-full"
                   onClick={() => {
                     // TODO: wire to quick-start flow (e.g., preset generation config)
@@ -473,10 +470,10 @@ export const DashboardPage: React.FC = () => {
                 >
                   <div className="p-6">
                     <div className="mb-3 flex items-center justify-between">
-                      <WorkoutTypeBadge type={workout.type as any} size="sm">
+                      <Badge variant="primary" size="sm">
                         {workout.type.toUpperCase()}
-                      </WorkoutTypeBadge>
-                      <IntensityBadge intensity={workout.intensity as any}>Intensity</IntensityBadge>
+                      </Badge>
+                      <Badge variant="secondary" size="sm">Intensity</Badge>
                     </div>
 
                     <h3 className="mb-2 font-bold text-neutral-900">{workout.name}</h3>

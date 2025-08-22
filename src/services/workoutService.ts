@@ -6,8 +6,7 @@ import type {
   WorkoutSession,
   Exercise,
   AdaptiveWorkoutRequest,
-  AdaptiveWorkoutResponse,
-  WorkoutPerformance
+  AdaptiveWorkoutResponse
 } from '../types';
 
 export interface GenerateWorkoutResponse {
@@ -79,8 +78,6 @@ export class WorkoutService {
 
   // Start a workout session
   static async startWorkoutSession(workoutPlanId: string): Promise<WorkoutSession> {
-    // This would typically create a new workout session document
-    // For now, we'll create a mock session
     const session: WorkoutSession = {
       id: `session_${Date.now()}`,
       userId: '', // Will be set by the calling component
@@ -90,7 +87,7 @@ export class WorkoutService {
       completedExercises: [],
       status: 'in_progress',
     };
-    
+
     return session;
   }
 
@@ -101,8 +98,6 @@ export class WorkoutService {
     _rating?: number,
     _feedback?: string
   ): Promise<void> {
-    // This would update the workout session in Firestore
-    // Implementation would go here
     const { logger } = await import('../utils/logger');
     logger.workout.completed('current_user', sessionId);
   }
@@ -135,40 +130,7 @@ export class WorkoutService {
     }
   }
 
-  // Submit workout performance feedback
-  static async submitWorkoutPerformance(performance: WorkoutPerformance): Promise<void> {
-    try {
-      const submitPerformanceFn = httpsCallable<WorkoutPerformance, { success: boolean }>(
-        functions,
-        'submitWorkoutPerformance'
-      );
 
-      const result = await submitPerformanceFn(performance);
-
-      if (!result.data.success) {
-        throw new Error('Failed to submit workout performance');
-      }
-    } catch (error: any) {
-      console.error('Error submitting workout performance:', error);
-      throw new Error(error.message || 'Failed to submit workout performance');
-    }
-  }
-
-  // Get personalized workout recommendations
-  static async getWorkoutRecommendations(userId: string): Promise<WorkoutPlan[]> {
-    try {
-      const getRecommendationsFn = httpsCallable<{ userId: string }, { recommendations: WorkoutPlan[] }>(
-        functions,
-        'getWorkoutRecommendations'
-      );
-
-      const result = await getRecommendationsFn({ userId });
-      return result.data.recommendations;
-    } catch (error: any) {
-      console.error('Error getting workout recommendations:', error);
-      throw new Error(error.message || 'Failed to get workout recommendations');
-    }
-  }
 
   // Analyze workout trends and progress
   static async getWorkoutAnalytics(userId: string, timeframe: 'week' | 'month' | 'quarter' = 'month'): Promise<any> {

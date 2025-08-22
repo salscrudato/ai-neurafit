@@ -2,17 +2,11 @@ import React, { forwardRef, type ReactElement, type ReactNode } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 
 /* ===== Types ===== */
-type FitnessVariant =
-  | 'cardio' | 'strength' | 'flexibility' | 'recovery' | 'hiit' | 'yoga' | 'pilates';
-
-type IntensityVariant =
-  | 'intensity-low' | 'intensity-medium' | 'intensity-high' | 'intensity-extreme';
-
 type AchievementVariant = 'achievement-bronze' | 'achievement-silver' | 'achievement-gold';
 
 export type BadgeVariant =
   | 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'accent' | 'gradient' | 'glass'
-  | FitnessVariant | IntensityVariant | AchievementVariant;
+  | AchievementVariant;
 
 export type BadgeSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
@@ -45,21 +39,6 @@ const VARIANT_CLS: Record<BadgeVariant, string> = {
   gradient:  'bg-gradient-primary text-white shadow-glow-primary hover:shadow-glow-primary-lg',
   glass:     'bg-white/10 backdrop-blur-md border border-white/20 text-white shadow-glass hover:bg-white/20',
 
-  // Fitness
-  cardio:      'bg-fitness-cardio-100 text-fitness-cardio-800 border border-fitness-cardio-200 hover:bg-fitness-cardio-200',
-  strength:    'bg-fitness-strength-100 text-fitness-strength-800 border border-fitness-strength-200 hover:bg-fitness-strength-200',
-  flexibility: 'bg-fitness-flexibility-100 text-fitness-flexibility-800 border border-fitness-flexibility-200 hover:bg-fitness-flexibility-200',
-  recovery:    'bg-fitness-recovery-100 text-fitness-recovery-800 border border-fitness-recovery-200 hover:bg-fitness-recovery-200',
-  hiit:        'bg-fitness-hiit-100 text-fitness-hiit-800 border border-fitness-hiit-200 hover:bg-fitness-hiit-200',
-  yoga:        'bg-fitness-yoga-100 text-fitness-yoga-800 border border-fitness-yoga-200 hover:bg-fitness-yoga-200',
-  pilates:     'bg-fitness-pilates-100 text-fitness-pilates-800 border border-fitness-pilates-200 hover:bg-fitness-pilates-200',
-
-  // Intensity
-  'intensity-low':     'bg-gradient-flexibility-soft text-fitness-flexibility-800 border border-fitness-flexibility-300',
-  'intensity-medium':  'bg-gradient-strength-soft text-fitness-strength-800 border border-fitness-strength-300',
-  'intensity-high':    'bg-gradient-cardio-soft text-fitness-cardio-800 border border-fitness-cardio-300',
-  'intensity-extreme': 'bg-gradient-hiit-soft text-fitness-hiit-800 border border-fitness-hiit-300',
-
   // Achievements
   'achievement-bronze': 'bg-gradient-to-r from-amber-600 to-amber-700 text-white shadow-achievement',
   'achievement-silver': 'bg-gradient-to-r from-gray-400 to-gray-500 text-white shadow-achievement',
@@ -89,17 +68,6 @@ const DOT_CLS: Partial<Record<BadgeVariant, string>> = {
   warning: 'bg-warning-500',
   error: 'bg-error-500',
   accent: 'bg-accent-500',
-  cardio: 'bg-fitness-cardio-500',
-  strength: 'bg-fitness-strength-500',
-  flexibility: 'bg-fitness-flexibility-500',
-  recovery: 'bg-fitness-recovery-500',
-  hiit: 'bg-fitness-hiit-500',
-  yoga: 'bg-fitness-yoga-500',
-  pilates: 'bg-fitness-pilates-500',
-  'intensity-low': 'bg-fitness-flexibility-500',
-  'intensity-medium': 'bg-fitness-strength-500',
-  'intensity-high': 'bg-fitness-cardio-500',
-  'intensity-extreme': 'bg-fitness-hiit-500',
 };
 
 /* ===== Component ===== */
@@ -145,7 +113,7 @@ export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(function Badge(
   ) : null;
 
   const Icon = icon
-    ? React.cloneElement(icon as ReactElement, { 'aria-hidden': 'true', className: iconClass })
+    ? React.cloneElement(icon as ReactElement<any>, { 'aria-hidden': true, className: iconClass })
     : null;
 
   if (animate && !shouldReduceMotion) {
@@ -219,30 +187,7 @@ export const CountBadge: React.FC<{
   );
 };
 
-export const WorkoutTypeBadge: React.FC<{
-  type: FitnessVariant;
-  children: ReactNode;
-  size?: BadgeSize;
-  animate?: boolean;
-}> = ({ type, children, size = 'md', animate = false }) => (
-  <Badge variant={type} size={size} animate={animate} srLabel={`Workout type: ${type}`}>
-    {children}
-  </Badge>
-);
 
-export const IntensityBadge: React.FC<{
-  intensity: 'low' | 'medium' | 'high' | 'extreme';
-  children: ReactNode;
-  size?: BadgeSize;
-  pulse?: boolean;
-}> = ({ intensity, children, size = 'sm', pulse = false }) => {
-  const variant = `intensity-${intensity}` as IntensityVariant;
-  return (
-    <Badge variant={variant} size={size} pulse={pulse} srLabel={`Intensity: ${intensity}`}>
-      {children}
-    </Badge>
-  );
-};
 
 export const AchievementBadge: React.FC<{
   level: 'bronze' | 'silver' | 'gold';

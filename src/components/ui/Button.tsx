@@ -178,7 +178,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 
   const renderIcon = (node: ReactNode) => {
     if (!node) return null;
-    return React.cloneElement(node as ReactElement, { className: iconCls });
+    return React.cloneElement(node as ReactElement<any>, { className: iconCls });
   };
 
   return (
