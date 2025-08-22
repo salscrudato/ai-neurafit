@@ -79,70 +79,7 @@ const FeatureCard: React.FC<{ feature: Feature; index: number }> = ({ feature, i
   </motion.div>
 );
 
-const DemoWorkoutCard: React.FC = () => {
-  return (
-    <motion.div
-      variants={fadeUp(0.2)}
-      initial="initial"
-      animate="animate"
-      className="relative w-full max-w-md mx-auto md:mx-0 rounded-2xl bg-white border border-neutral-200 shadow-elevated p-6"
-      aria-label="Preview of an AI-generated workout"
-    >
-      <div className="flex items-center gap-2 text-sm font-medium text-energy-600">
-        <SparklesIcon className="h-4 w-4" aria-hidden="true" />
-        <span className="bg-gradient-energy bg-clip-text text-transparent">AI Plan • Today</span>
-      </div>
 
-      <h3 className="mt-2 text-xl font-semibold text-neutral-900">
-        25‑min Upper Body Power
-      </h3>
-
-      <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-        <span className="inline-flex items-center gap-1 rounded-full border border-black/10 px-2.5 py-1">
-          <ClockIcon className="h-4 w-4" aria-hidden="true" /> 25 min
-        </span>
-        <span className="inline-flex items-center gap-1 rounded-full border border-black/10 px-2.5 py-1">
-          <ChartBarIcon className="h-4 w-4" aria-hidden="true" /> Moderate
-        </span>
-        <span className="inline-flex items-center gap-1 rounded-full border border-black/10 px-2.5 py-1">
-          <DevicePhoneMobileIcon className="h-4 w-4" aria-hidden="true" /> Minimal gear
-        </span>
-      </div>
-
-      <ul className="mt-4 space-y-2 text-sm text-neutral-700 dark:text-neutral-200">
-        <li className="flex items-start gap-2">
-          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-energy-500" aria-hidden="true" />
-          Push‑ups — 3×12 (tempo 2‑1‑2)
-        </li>
-        <li className="flex items-start gap-2">
-          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-energy-500" aria-hidden="true" />
-          Pike Shoulder Press — 3×10
-        </li>
-        <li className="flex items-start gap-2">
-          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-energy-500" aria-hidden="true" />
-          Band Row — 3×15
-        </li>
-        <li className="flex items-start gap-2">
-          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-energy-500" aria-hidden="true" />
-          Plank — 3×40s
-        </li>
-      </ul>
-
-      <div className="mt-5 flex gap-3">
-        <Link to="/signup" className="flex-1">
-          <Button variant="energy" size="md" className="w-full">
-            Start Now
-          </Button>
-        </Link>
-        <Link to="/login">
-          <Button variant="secondary" size="md" className="px-4">
-            Shuffle
-          </Button>
-        </Link>
-      </div>
-    </motion.div>
-  );
-};
 
 export const LandingPage: React.FC = () => {
   const reduceMotion = useReducedMotion();
@@ -225,24 +162,21 @@ export const LandingPage: React.FC = () => {
             </div>
           </motion.div>
 
-          {/* Demo card below hero text */}
-          <div className="mt-12 md:mt-16 grid md:grid-cols-2 gap-8 items-center">
-            <DemoWorkoutCard />
-            <motion.div
-              variants={fadeUp(0.25)}
-              initial="initial"
-              animate="animate"
-              className="text-left md:text-start"
-            >
-              <h2 className="text-2xl md:text-3xl font-bold text-neutral-900">
-                Smarter plans. Better adherence. Real progress.
-              </h2>
-              <p className="mt-3 text-neutral-600">
-                NeuraFit removes guesswork: the right movements, rep schemes, and rest—auto‑calibrated
-                to your performance and recovery signals. Train with intent, not intuition.
-              </p>
-            </motion.div>
-          </div>
+          {/* Value proposition */}
+          <motion.div
+            variants={fadeUp(0.25)}
+            initial="initial"
+            animate="animate"
+            className="mt-12 md:mt-16 text-center max-w-3xl mx-auto"
+          >
+            <h2 className="text-2xl md:text-3xl font-bold text-neutral-900">
+              Smarter plans. Better adherence. Real progress.
+            </h2>
+            <p className="mt-3 text-neutral-600">
+              NeuraFit removes guesswork: the right movements, rep schemes, and rest—auto‑calibrated
+              to your performance and recovery signals. Train with intent, not intuition.
+            </p>
+          </motion.div>
         </div>
       </header>
 
