@@ -221,7 +221,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
 
               {/* Pause/Resume Button */}
               <Button
-                variant={isPaused ? "accent" : "secondary"}
+                variant={isPaused ? "energy" : "secondary"}
                 onClick={isPaused ? onResume : onPause}
                 size="lg"
                 icon={isPaused ? <PlayIcon /> : <PauseIcon />}

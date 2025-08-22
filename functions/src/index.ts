@@ -6,24 +6,9 @@
  * - Minimal health check endpoint
  */
 
-import * as admin from 'firebase-admin';
 import { setGlobalOptions } from 'firebase-functions/v2';
 import { onRequest } from 'firebase-functions/v2/https';
-
-// ------------------------
-// Admin initialization
-// ------------------------
-if (admin.apps.length === 0) {
-  // Uses default credentials in prod or emulator env vars locally
-  admin.initializeApp();
-}
-
-// Shared handles for other modules
-export const db = admin.firestore();
-export const storage = admin.storage();
-
-// Safer Firestore defaults (prevents accidental writes of undefined fields)
-db.settings({ ignoreUndefinedProperties: true });
+import { db, admin } from './shared';
 
 // Helpful environment flags
 const IS_EMULATOR = !!process.env.FUNCTIONS_EMULATOR || !!process.env.FIRESTORE_EMULATOR_HOST;
@@ -34,7 +19,7 @@ const PROJECT_ID = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || 'unk
 // Adjust as needed per project/profile
 // ------------------------
 setGlobalOptions({
-  region: ['us-central1'],          // Add more regions if you deploy multi-region
+  region: 'us-central1',            // Single region for simplicity
   memory: '512MiB',                 // Common sweet spot; bump for heavy tasks
   cpu: 1,                           // Keep cold start/light cost
   timeoutSeconds: 60,               // Default safety net; override per function if needed

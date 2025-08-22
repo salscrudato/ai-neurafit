@@ -6,17 +6,11 @@
  * - Idempotent create/update with transactional timestamps
  */
 
-import * as admin from 'firebase-admin';
 import { onCall, HttpsError, CallableRequest } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions';
 import { z } from 'zod';
 import { createHash } from 'crypto';
-
-if (admin.apps.length === 0) {
-  admin.initializeApp();
-}
-const db = admin.firestore();
-db.settings({ ignoreUndefinedProperties: true });
+import { db, admin } from './shared';
 
 /* -----------------------------------------------------------------------------
  * Schema & validation
@@ -38,19 +32,19 @@ const UserProfileSchema = z
     timeCommitment: z.object({
       daysPerWeek: z.number().int().min(1).max(7),
       minutesPerSession: z.number().int().min(10).max(180),
-      preferredTimes: z.array(PreferredTime).nonempty().max(4),
+      preferredTimes: z.array(PreferredTime).min(1).max(4),
     }),
     preferences: z.object({
       workoutTypes: stringArray,        // e.g., "strength", "hiit", "mobility"
       intensity: Intensity,
       restDayPreference: z.number().int().min(0).max(6), // 0=Sun .. 6=Sat
-      injuriesOrLimitations: stringArray.max(20),
+      injuriesOrLimitations: stringArray,
     }),
   })
   .strict();
 
 /** Partial schema for PATCH‑style updates. */
-const UserProfileUpdateSchema = UserProfileSchema.deepPartial().strict();
+const UserProfileUpdateSchema = UserProfileSchema.partial().strict();
 
 /* -----------------------------------------------------------------------------
  * Helpers

@@ -8,14 +8,10 @@
  * - Name resolver to canonicalize AI / user-entered exercise names
  */
 
-import * as admin from 'firebase-admin';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions';
 import { z } from 'zod';
-
-if (admin.apps.length === 0) admin.initializeApp();
-const db = admin.firestore();
-db.settings({ ignoreUndefinedProperties: true });
+import { db, admin } from './shared';
 
 /* -----------------------------------------------------------------------------
  * Schemas & helpers

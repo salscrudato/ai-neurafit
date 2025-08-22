@@ -8,16 +8,12 @@
  * - Simple per-user rate limiting
  */
 
-import * as admin from 'firebase-admin';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions';
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { createHash } from 'crypto';
-
-if (admin.apps.length === 0) admin.initializeApp();
-const db = admin.firestore();
-db.settings({ ignoreUndefinedProperties: true });
+import { db, admin } from './shared';
 
 /* -----------------------------------------------------------------------------
  * OpenAI client (lazy)
