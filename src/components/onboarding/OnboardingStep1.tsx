@@ -19,7 +19,6 @@ type LevelOption = {
   title: string;
   description: string;
   icon: React.ComponentType<React.ComponentProps<'svg'>>;
-  details: string[];
 };
 
 const fitnessLevels: ReadonlyArray<LevelOption> = [
@@ -28,33 +27,18 @@ const fitnessLevels: ReadonlyArray<LevelOption> = [
     title: 'Beginner',
     description: 'New to fitness or getting back into it',
     icon: AcademicCapIcon,
-    details: [
-      'Little to no exercise experience',
-      'Looking to build healthy habits',
-      'Want to start slow and steady',
-    ],
   },
   {
     level: 'intermediate',
     title: 'Intermediate',
     description: 'Regular exercise routine for 6+ months',
     icon: TrophyIcon,
-    details: [
-      'Exercise 2–4 times per week',
-      'Comfortable with basic movements',
-      'Ready for more challenging workouts',
-    ],
   },
   {
     level: 'advanced',
     title: 'Advanced',
     description: 'Experienced athlete or fitness enthusiast',
     icon: FireIcon,
-    details: [
-      'Exercise 5+ times per week',
-      'Strong foundation in fitness',
-      'Looking for intense, varied workouts',
-    ],
   },
 ];
 
@@ -190,15 +174,7 @@ export const OnboardingStep1: React.FC<OnboardingStep1Props> = memo(
                       <h3 className="text-lg font-semibold text-neutral-900 mb-1">
                         {option.title}
                       </h3>
-                      <p className="text-neutral-600 mb-3">{option.description}</p>
-                      <ul className="text-sm text-neutral-500 space-y-1">
-                        {option.details.map((detail, idx) => (
-                          <li key={idx} className="flex items-center">
-                            <span className="w-1.5 h-1.5 bg-neutral-400 rounded-full mr-2" />
-                            {detail}
-                          </li>
-                        ))}
-                      </ul>
+                      <p className="text-neutral-600">{option.description}</p>
                     </div>
 
                     {/* Selected check */}

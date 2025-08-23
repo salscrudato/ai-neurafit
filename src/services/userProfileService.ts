@@ -1,85 +1,115 @@
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../lib/firebase';
-import type { UserProfile } from '../types';
+import type {
+  UserProfile,
+  FitnessLevel,
+  FitnessGoal,
+  Equipment,
+  TimeCommitment,
+  UserPreferences,
+} from '../types';
+import { logger } from '../utils/logger';
+
+/** ---- Shared helpers ------------------------------------------------------ */
+
+const CALLABLE_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(p: Promise<T>, ms = CALLABLE_TIMEOUT_MS, label = 'request'): Promise<T> {
+  let id: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    id = window.setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+  return Promise.race([p, timeout]).finally(() => clearTimeout(id));
+}
+
+function mapFunctionsError(error: any): Error {
+  const code = error?.code as string | undefined; // e.g. "functions/invalid-argument"
+  const msg = error?.message as string | undefined;
+
+  const nice =
+    code === 'functions/invalid-argument' ? 'Invalid data sent to server.'
+    : code === 'functions/permission-denied' ? 'You do not have permission to perform this action.'
+    : code === 'functions/not-found' ? 'Resource not found.'
+    : code === 'functions/deadline-exceeded' ? 'The server took too long to respond.'
+    : code === 'functions/resource-exhausted' ? 'Server rate limit exceeded. Please retry shortly.'
+    : code === 'functions/unavailable' ? 'Service temporarily unavailable. Check your connection and retry.'
+    : msg || 'An unexpected error occurred.';
+
+  return new Error(nice);
+}
+
+async function callFn<TReq, TRsp>(name: string, payload: TReq): Promise<TRsp> {
+  logger.api.request(name, 'callable');
+  const fn = httpsCallable<TReq, TRsp>(functions, name);
+  const started = performance.now();
+
+  try {
+    const res = await withTimeout(fn(payload), CALLABLE_TIMEOUT_MS, name);
+    logger.api.response(name, 200, performance.now() - started);
+    return res.data;
+  } catch (err: any) {
+    logger.api.error(name, err);
+    throw mapFunctionsError(err);
+  }
+}
+
+/** ---- Request/response contracts ----------------------------------------- */
 
 export interface CreateUserProfileRequest {
-  fitnessLevel: "beginner" | "intermediate" | "advanced";
-  fitnessGoals: string[];
-  availableEquipment: string[];
-  timeCommitment: {
-    daysPerWeek: number;
-    minutesPerSession: number;
-    preferredTimes: string[];
-  };
-  preferences: {
-    workoutTypes: string[];
-    intensity: "low" | "moderate" | "high";
-    restDayPreference: number;
-    injuriesOrLimitations: string[];
-  };
+  fitnessLevel: FitnessLevel;
+  fitnessGoals: FitnessGoal[];
+  availableEquipment: Equipment[];
+  timeCommitment: TimeCommitment;
+  preferences: UserPreferences;
 }
 
 export interface UserProfileResponse {
   success: boolean;
-  message: string;
+  message?: string;
 }
 
 export interface GetUserProfileResponse {
   profile: UserProfile | null;
 }
 
+/** ---- Service ------------------------------------------------------------- */
+
 export class UserProfileService {
-  // Create or update user profile
+  /**
+   * Create (or overwrite) the signed-in user's profile.
+   * The server derives the UID from auth context; no need to pass it.
+   */
   static async createUserProfile(profileData: CreateUserProfileRequest): Promise<void> {
-    try {
-      const createUserProfileFn = httpsCallable<CreateUserProfileRequest, UserProfileResponse>(
-        functions, 
-        'createUserProfile'
-      );
-      
-      const result = await createUserProfileFn(profileData);
-      
-      if (!result.data.success) {
-        throw new Error(result.data.message || 'Failed to create user profile');
-      }
-    } catch (error: any) {
-      console.error('Error creating user profile:', error);
-      throw new Error(error.message || 'Failed to create user profile');
+    const data = await callFn<CreateUserProfileRequest, UserProfileResponse>(
+      'createUserProfile',
+      profileData
+    );
+
+    if (!data?.success) {
+      throw new Error(data?.message || 'Failed to create user profile');
     }
   }
 
-  // Get user profile
+  /**
+   * Get the signed-in user's profile.
+   */
   static async getUserProfile(): Promise<UserProfile | null> {
-    try {
-      const getUserProfileFn = httpsCallable<void, GetUserProfileResponse>(
-        functions, 
-        'getUserProfile'
-      );
-      
-      const result = await getUserProfileFn();
-      return result.data.profile;
-    } catch (error: any) {
-      console.error('Error fetching user profile:', error);
-      throw new Error(error.message || 'Failed to fetch user profile');
-    }
+    // Prefer sending an empty object to avoid TS friction on "no-arg" callables
+    const data = await callFn<Record<string, never>, GetUserProfileResponse>('getUserProfile', {});
+    return data.profile ?? null;
   }
 
-  // Update user profile
+  /**
+   * Partially update the signed-in user's profile.
+   */
   static async updateUserProfile(updates: Partial<CreateUserProfileRequest>): Promise<void> {
-    try {
-      const updateUserProfileFn = httpsCallable<Partial<CreateUserProfileRequest>, UserProfileResponse>(
-        functions, 
-        'updateUserProfile'
-      );
-      
-      const result = await updateUserProfileFn(updates);
-      
-      if (!result.data.success) {
-        throw new Error(result.data.message || 'Failed to update user profile');
-      }
-    } catch (error: any) {
-      console.error('Error updating user profile:', error);
-      throw new Error(error.message || 'Failed to update user profile');
+    const data = await callFn<Partial<CreateUserProfileRequest>, UserProfileResponse>(
+      'updateUserProfile',
+      updates
+    );
+
+    if (!data?.success) {
+      throw new Error(data?.message || 'Failed to update user profile');
     }
   }
 }

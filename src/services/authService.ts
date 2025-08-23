@@ -4,231 +4,201 @@ import {
   signOut as fbSignOut,
   updateProfile,
   GoogleAuthProvider,
+  OAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   sendPasswordResetEmail,
   type User as FirebaseUser,
-  type UserCredential,
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
-import { getRecommendedAuthMethod, isPopupBlocked } from '../utils/authUtils';
-import type { User, UserProfile } from '../types';
+import { auth } from '../lib/firebase';
 import { logger } from '../utils/logger';
+import type { User } from '../types';
 
-/** Public sentinel text kept for backward compatibility with existing UI checks */
-export const GOOGLE_REDIRECTING_MESSAGE = 'Redirecting to Google sign-in...';
-
-export interface SignUpData {
-  email: string;
-  password: string;
-  displayName: string;
-}
-export interface SignInData {
-  email: string;
-  password: string;
-}
-
-/** Uniform error type with Firebase-like code */
 export class AuthError extends Error {
-  code?: string;
-  constructor(code: string | undefined, message: string) {
+  public code: string;
+
+  constructor(code: string, message: string) {
     super(message);
     this.name = 'AuthError';
     this.code = code;
   }
 }
 
+export interface SignUpData {
+  email: string;
+  password: string;
+  displayName: string;
+}
+
 export class AuthService {
-  /* ------------------------------------------------------------------------ *
-   * Public API
-   * ------------------------------------------------------------------------ */
+  // Convert Firebase user to our User type
+  private static mapFirebaseUser(firebaseUser: FirebaseUser): User {
+    return {
+      id: firebaseUser.uid,
+      email: firebaseUser.email || '',
+      displayName: firebaseUser.displayName || '',
+      photoURL: firebaseUser.photoURL || undefined,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+  }
 
-  static async signUp({ email, password, displayName }: SignUpData): Promise<User> {
+  // Convert Firebase errors to our AuthError type
+  private static toAuthError(err: any): AuthError {
+    const code = err?.code || 'auth/unknown';
+    let message = 'An authentication error occurred.';
+
+    switch (code) {
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+        message = 'Invalid email or password.';
+        break;
+      case 'auth/email-already-in-use':
+        message = 'An account with this email already exists.';
+        break;
+      case 'auth/weak-password':
+        message = 'Password should be at least 6 characters.';
+        break;
+      case 'auth/invalid-email':
+        message = 'Please enter a valid email address.';
+        break;
+      case 'auth/popup-blocked':
+        message = 'Popup was blocked. Please allow popups and try again.';
+        break;
+      case 'auth/popup-closed-by-user':
+        message = 'Sign-in was cancelled. Please try again.';
+        break;
+      case 'auth/network-request-failed':
+        message = 'Network error. Please check your connection and try again.';
+        break;
+      default:
+        message = err?.message || message;
+    }
+
+    return new AuthError(code, message);
+  }
+
+  // Email sign up
+  static async signUp(data: SignUpData): Promise<User> {
+    console.log('🔵 AuthService.signUp: Starting email sign-up', { email: data.email });
+    
     try {
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(cred.user, { displayName });
-
-      // Cloud Function onAuthCreate will provision Firestore user; we only return mapped user.
-      return this.mapFirebaseUser(cred.user);
+      const cred = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      
+      // Update display name
+      await updateProfile(cred.user, { displayName: data.displayName });
+      
+      // Refresh the user to get updated profile
+      await cred.user.reload();
+      const updatedUser = auth.currentUser!;
+      
+      console.log('✅ AuthService.signUp: Email sign-up successful', { uid: updatedUser.uid });
+      logger.auth.login(updatedUser.uid);
+      
+      return this.mapFirebaseUser(updatedUser);
     } catch (err: any) {
-      logger.auth.error('Sign up failed', err as Error);
+      console.error('❌ AuthService.signUp: Email sign-up failed', err);
+      logger.auth.error('Email sign up failed', err as Error);
       throw this.toAuthError(err);
     }
   }
 
-  static async signIn({ email, password }: SignInData): Promise<User> {
+  // Email sign in
+  static async signIn(email: string, password: string): Promise<User> {
+    console.log('🔵 AuthService.signIn: Starting email sign-in', { email });
+    
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password);
+      console.log('✅ AuthService.signIn: Email sign-in successful', { uid: cred.user.uid });
       logger.auth.login(cred.user.uid);
-
-      // Optionally refresh token on sign-in to keep claims fresh
-      await cred.user.getIdToken(true);
+      
       return this.mapFirebaseUser(cred.user);
     } catch (err: any) {
-      logger.auth.error('Sign in failed', err as Error);
+      console.error('❌ AuthService.signIn: Email sign-in failed', err);
+      logger.auth.error('Email sign in failed', err as Error);
       throw this.toAuthError(err);
     }
   }
 
+  // Google sign in - simplified popup only
   static async signInWithGoogle(): Promise<User> {
+    console.log('🔵 AuthService.signInWithGoogle: Starting Google sign-in');
+    
     const provider = new GoogleAuthProvider();
     provider.addScope('email');
     provider.addScope('profile');
-    // Encourage explicit account selection to reduce wrong-account friction
     provider.setCustomParameters({ prompt: 'select_account' });
 
-    const method = getRecommendedAuthMethod();
-
     try {
-      if (method === 'redirect') {
-        await signInWithRedirect(auth, provider);
-        // Inform caller that flow continues after redirect
-        throw new AuthError('auth/redirecting', GOOGLE_REDIRECTING_MESSAGE);
-      }
-
-      // Try popup first
-      let cred: UserCredential | undefined;
-      try {
-        cred = await signInWithPopup(auth, provider);
-      } catch (popupErr: any) {
-        // Fallback to redirect if popups are blocked
-        if (isPopupBlocked(popupErr)) {
-          await signInWithRedirect(auth, provider);
-          throw new AuthError('auth/redirecting', GOOGLE_REDIRECTING_MESSAGE);
-        }
-        // Non-blocking popup error -> normalize and surface
-        throw popupErr;
-      }
-
-      const user = cred!.user;
-      logger.auth.login(user.uid);
-      await user.getIdToken(true);
-      return this.mapFirebaseUser(user);
+      console.log('🪟 AuthService.signInWithGoogle: Opening Google popup');
+      const cred = await signInWithPopup(auth, provider);
+      
+      console.log('✅ AuthService.signInWithGoogle: Google sign-in successful', {
+        uid: cred.user.uid,
+        email: cred.user.email,
+        displayName: cred.user.displayName
+      });
+      
+      logger.auth.login(cred.user.uid);
+      return this.mapFirebaseUser(cred.user);
     } catch (err: any) {
-      // If we already threw redirect sentinel, pass it through
-      if (err instanceof AuthError && err.code === 'auth/redirecting') throw err;
-
+      console.error('❌ AuthService.signInWithGoogle: Google sign-in failed', err);
       logger.auth.error('Google sign in failed', err as Error);
       throw this.toAuthError(err);
     }
   }
 
-  static async handleRedirectResult(): Promise<User | null> {
-    try {
-      const result = await getRedirectResult(auth);
-      if (!result) return null;
+  // Apple sign in - simplified popup only
+  static async signInWithApple(): Promise<User> {
+    console.log('🍎 AuthService.signInWithApple: Starting Apple sign-in');
+    
+    const provider = new OAuthProvider('apple.com');
+    provider.addScope('email');
+    provider.addScope('name');
 
-      const user = result.user;
-      logger.auth.login(user.uid);
-      await user.getIdToken(true);
-      return this.mapFirebaseUser(user);
+    try {
+      console.log('🪟 AuthService.signInWithApple: Opening Apple popup');
+      const cred = await signInWithPopup(auth, provider);
+      
+      console.log('✅ AuthService.signInWithApple: Apple sign-in successful', {
+        uid: cred.user.uid,
+        email: cred.user.email,
+        displayName: cred.user.displayName
+      });
+      
+      logger.auth.login(cred.user.uid);
+      return this.mapFirebaseUser(cred.user);
     } catch (err: any) {
-      // Common case when email exists with another provider
-      if (err?.code === 'auth/account-exists-with-different-credential') {
-        throw new AuthError(
-          err.code,
-          'This email is linked to another sign-in method. Please sign in with that provider and link Google in Profile > Security.',
-        );
-      }
-      logger.auth.error('Error processing redirect result', err as Error);
+      console.error('❌ AuthService.signInWithApple: Apple sign-in failed', err);
+      logger.auth.error('Apple sign in failed', err as Error);
       throw this.toAuthError(err);
     }
   }
 
+  // Sign out
   static async signOut(): Promise<void> {
+    console.log('🚪 AuthService.signOut: Signing out');
+    
     try {
       await fbSignOut(auth);
+      console.log('✅ AuthService.signOut: Sign out successful');
     } catch (err: any) {
+      console.error('❌ AuthService.signOut: Sign out failed', err);
       logger.auth.error('Sign out failed', err as Error);
       throw new AuthError('auth/signout-failed', 'Failed to sign out. Please try again.');
     }
   }
 
+  // Reset password
   static async resetPassword(email: string): Promise<void> {
+    console.log('🔄 AuthService.resetPassword: Sending reset email', { email });
+    
     try {
       await sendPasswordResetEmail(auth, email);
+      console.log('✅ AuthService.resetPassword: Reset email sent');
     } catch (err: any) {
+      console.error('❌ AuthService.resetPassword: Failed to send reset email', err);
       logger.auth.error('Failed to send password reset email', err as Error);
       throw this.toAuthError(err);
-    }
-  }
-
-  static async getUserProfile(userId: string): Promise<UserProfile | null> {
-    try {
-      const snap = await getDoc(doc(db, 'userProfiles', userId));
-      if (!snap.exists()) return null;
-
-      const data = snap.data() as any;
-      const toDate = (t: any) => (t?.toDate ? t.toDate() : undefined);
-
-      return {
-        ...data,
-        createdAt: toDate(data?.createdAt),
-        updatedAt: toDate(data?.updatedAt),
-      } as UserProfile;
-    } catch (err: any) {
-      logger.auth.error('Error fetching user profile', err as Error);
-      return null;
-    }
-  }
-
-  /* ------------------------------------------------------------------------ *
-   * Helpers
-   * ------------------------------------------------------------------------ */
-
-  private static mapFirebaseUser(firebaseUser: FirebaseUser): User {
-    return {
-      id: firebaseUser.uid,
-      email: firebaseUser.email || '',
-      displayName: firebaseUser.displayName || undefined,
-      photoURL: firebaseUser.photoURL || undefined,
-      createdAt: new Date(firebaseUser.metadata.creationTime || Date.now()),
-      updatedAt: new Date(firebaseUser.metadata.lastSignInTime || Date.now()),
-    };
-  }
-
-  /** Convert Firebase error into uniform AuthError with friendly message */
-  private static toAuthError(err: any): AuthError {
-    const code = err?.code || 'auth/unknown';
-    const message = this.getErrorMessage(code) || err?.message || 'Authentication failed.';
-    return new AuthError(code, message);
-  }
-
-  /** Friendly messages mapped from Firebase codes */
-  private static getErrorMessage(code: string): string {
-    switch (code) {
-      // Email/password
-      case 'auth/user-not-found':
-      case 'auth/wrong-password':
-        return 'Email or password is incorrect.';
-      case 'auth/invalid-email':
-        return 'Enter a valid email address.';
-      case 'auth/weak-password':
-        return 'Password should be at least 6 characters.';
-      case 'auth/too-many-requests':
-        return 'Too many attempts. Please try again later.';
-      // Sign-up
-      case 'auth/email-already-in-use':
-        return 'An account with this email already exists.';
-      // Popup/redirect
-      case 'auth/popup-closed-by-user':
-        return 'Sign-in window was closed.';
-      case 'auth/popup-blocked':
-        return 'Sign-in popup was blocked. Allow popups and try again.';
-      case 'auth/cancelled-popup-request':
-        return 'Sign-in was cancelled. Please try again.';
-      case 'auth/network-request-failed':
-        return 'Network error. Check your connection and try again.';
-      // Redirect handling
-      case 'auth/account-exists-with-different-credential':
-        return 'This email is linked to another sign-in method.';
-      // Custom sentinel
-      case 'auth/redirecting':
-        return GOOGLE_REDIRECTING_MESSAGE;
-      default:
-        return 'An error occurred during authentication.';
     }
   }
 }

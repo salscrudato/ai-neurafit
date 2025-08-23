@@ -13,10 +13,11 @@ const firebase_functions_1 = require("firebase-functions");
 const zod_1 = require("zod");
 const crypto_1 = require("crypto");
 const shared_1 = require("./shared");
+const firestore_1 = require("firebase-admin/firestore");
 /* -----------------------------------------------------------------------------
  * Schema & validation
  * ---------------------------------------------------------------------------*/
-const PreferredTime = zod_1.z.enum(['morning', 'afternoon', 'evening', 'variable']);
+const PreferredTime = zod_1.z.enum(['early_morning', 'morning', 'midday', 'afternoon', 'evening', 'night', 'variable']);
 const Intensity = zod_1.z.enum(['low', 'moderate', 'high']);
 const FitnessLevel = zod_1.z.enum(['beginner', 'intermediate', 'advanced']);
 const stringArray = zod_1.z
@@ -124,7 +125,8 @@ exports.createUserProfile = (0, https_1.onCall)({
     region: 'us-central1',
     memory: '256MiB',
     timeoutSeconds: 60,
-    enforceAppCheck: true, // require App Check from client
+    enforceAppCheck: false, // Disabled for development - enable in production
+    cors: true, // Enable CORS for development
 }, async (req) => {
     var _a;
     const uid = requireAuth(req);
@@ -132,7 +134,7 @@ exports.createUserProfile = (0, https_1.onCall)({
     const parsed = UserProfileSchema.parse((_a = req.data) !== null && _a !== void 0 ? _a : {});
     const normalized = normalizeInput(parsed);
     const system = computeDerived(normalized);
-    const now = shared_1.admin.firestore.FieldValue.serverTimestamp();
+    const now = firestore_1.FieldValue.serverTimestamp();
     try {
         await shared_1.db.runTransaction(async (tx) => {
             const ref = shared_1.db.collection('userProfiles').doc(uid);
@@ -165,7 +167,8 @@ exports.getUserProfile = (0, https_1.onCall)({
     region: 'us-central1',
     memory: '128MiB',
     timeoutSeconds: 30,
-    enforceAppCheck: true,
+    enforceAppCheck: false, // Disabled for development - enable in production
+    cors: true, // Enable CORS for development
 }, async (req) => {
     const uid = requireAuth(req);
     try {
@@ -185,7 +188,8 @@ exports.updateUserProfile = (0, https_1.onCall)({
     region: 'us-central1',
     memory: '256MiB',
     timeoutSeconds: 60,
-    enforceAppCheck: true,
+    enforceAppCheck: false, // Disabled for development - enable in production
+    cors: true, // Enable CORS for development
 }, async (req) => {
     var _a;
     const uid = requireAuth(req);
@@ -220,7 +224,7 @@ exports.updateUserProfile = (0, https_1.onCall)({
             };
             const normalized = normalizeInput(materialized);
             const system = computeDerived(normalized);
-            const update = Object.assign(Object.assign({}, normalized), { system, updatedAt: shared_1.admin.firestore.FieldValue.serverTimestamp() });
+            const update = Object.assign(Object.assign({}, normalized), { system, updatedAt: firestore_1.FieldValue.serverTimestamp() });
             tx.set(ref, update, { merge: true });
         });
         firebase_functions_1.logger.info('User profile updated', { uid });

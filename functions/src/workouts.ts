@@ -387,7 +387,7 @@ export const generateWorkout = onCall(
     region: 'us-central1',
     memory: '512MiB',
     timeoutSeconds: 180,
-    enforceAppCheck: true,
+    enforceAppCheck: false, // Disabled for development - enable in production
   },
   async (req) => {
     const uid = requireAuth(req);
@@ -533,7 +533,7 @@ export const generateAdaptiveWorkout = onCall(
     region: 'us-central1',
     memory: '512MiB',
     timeoutSeconds: 180,
-    enforceAppCheck: true,
+    enforceAppCheck: false, // Disabled for development - enable in production
   },
   async (req) => {
     const uid = requireAuth(req);

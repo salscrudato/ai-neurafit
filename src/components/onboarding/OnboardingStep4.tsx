@@ -1,13 +1,14 @@
-import React, { memo, useId, useMemo, useRef } from 'react';
+import React, { memo, useId, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Button } from '../ui/Button';
-import { XMarkIcon as XIcon } from '@heroicons/react/24/outline';
 
 interface OnboardingStep4Props {
   data: any;
   onUpdate: (data: any) => void;
-  onNext: () => void;
+  onNext?: () => void;
+  onComplete?: () => Promise<void> | void;
   onPrev: () => void;
+  submitting?: boolean;
 }
 
 const daysPerWeekOptions = [
@@ -37,8 +38,9 @@ const preferredTimesOptions = [
 ];
 
 export const OnboardingStep4: React.FC<OnboardingStep4Props> = memo(
-  ({ data, onUpdate, onNext, onPrev }) => {
+  ({ data, onUpdate, onNext, onComplete, onPrev, submitting = false }) => {
     const reduceMotion = useReducedMotion();
+    const [loading, setLoading] = useState(false);
 
     const groupIdDays = useId();
     const groupIdMinutes = useId();
@@ -53,10 +55,7 @@ export const OnboardingStep4: React.FC<OnboardingStep4Props> = memo(
       ? data.timeCommitment.preferredTimes
       : [];
 
-    const weeklyMinutes = useMemo(
-      () => (daysSelected || 0) * (minutesSelected || 0),
-      [daysSelected, minutesSelected]
-    );
+
 
     // Refs for roving focus
     const daysRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -102,7 +101,7 @@ export const OnboardingStep4: React.FC<OnboardingStep4Props> = memo(
       updateTimeCommitment({ preferredTimes: next });
     };
 
-    const clearPreferredTimes = () => updateTimeCommitment({ preferredTimes: [] });
+
 
     /* ------------------------------ Keyboard ------------------------------ */
     const moveFocus = (refs: React.MutableRefObject<Array<HTMLButtonElement | null>>, nextIndex: number) => {
@@ -189,6 +188,23 @@ export const OnboardingStep4: React.FC<OnboardingStep4Props> = memo(
       !!minutesSelected &&
       Array.isArray(timesSelected) &&
       timesSelected.length > 0;
+
+    const handleComplete = async () => {
+      if (onComplete) {
+        setLoading(true);
+        try {
+          await onComplete();
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    const handleNext = () => {
+      if (onNext) {
+        onNext();
+      }
+    };
 
     return (
       <div className="card relative overflow-hidden">
@@ -357,72 +373,24 @@ export const OnboardingStep4: React.FC<OnboardingStep4Props> = memo(
               })}
             </div>
 
-            {/* Summary & clear */}
-            {timesSelected.length > 0 && (
-              <div className="mt-4 rounded-lg border border-primary-100 bg-primary-50 px-3 py-2">
-                <p className="text-sm text-primary-700">
-                  <strong>Selected times:</strong>{' '}
-                  {preferredTimesOptions
-                    .filter((t) => timesSelected.includes(t.value))
-                    .map((t) => t.label)
-                    .join(', ')}
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2" aria-live="polite">
-                  {preferredTimesOptions
-                    .filter((t) => timesSelected.includes(t.value))
-                    .map((t) => (
-                      <span
-                        key={t.value}
-                        className="inline-flex items-center gap-1 rounded-full border border-primary-200 bg-white px-3 py-1 text-xs font-medium text-neutral-700"
-                      >
-                        {t.label}
-                        <button
-                          type="button"
-                          aria-label={`Remove ${t.label}`}
-                          onClick={() => handlePreferredTimeToggle(t.value)}
-                          className="ml-1 rounded-full p-0.5 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
-                        >
-                          <XIcon className="h-3.5 w-3.5 text-neutral-500" aria-hidden="true" />
-                        </button>
-                      </span>
-                    ))}
-                  {timesSelected.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={clearPreferredTimes}
-                      className="text-xs font-medium text-primary-700 hover:text-primary-800 underline underline-offset-2"
-                    >
-                      Clear all
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
+
           </section>
         </div>
 
-        {/* Schedule summary */}
-        <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="rounded-lg border border-neutral-200 bg-white p-3 text-center">
-            <div className="text-xs text-neutral-500">Days / week</div>
-            <div className="text-xl font-semibold text-neutral-900">{daysSelected || 0}</div>
-          </div>
-          <div className="rounded-lg border border-neutral-200 bg-white p-3 text-center">
-            <div className="text-xs text-neutral-500">Minutes / session</div>
-            <div className="text-xl font-semibold text-neutral-900">{minutesSelected || 0}</div>
-          </div>
-          <div className="rounded-lg border border-neutral-200 bg-white p-3 text-center">
-            <div className="text-xs text-neutral-500">Weekly minutes</div>
-            <div className="text-xl font-semibold text-neutral-900">{weeklyMinutes}</div>
-          </div>
-        </div>
+
 
         <div className="flex justify-between">
           <Button variant="outline" onClick={onPrev} size="lg" className="px-8">
             Back
           </Button>
-          <Button onClick={onNext} disabled={!canProceed} size="lg" className="px-8">
-            Continue
+          <Button
+            onClick={onComplete ? handleComplete : handleNext}
+            disabled={!canProceed || loading || submitting}
+            loading={loading || submitting}
+            size="lg"
+            className="px-8"
+          >
+            {onComplete ? 'Complete Setup' : 'Continue'}
           </Button>
         </div>
       </div>

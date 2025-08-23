@@ -228,10 +228,11 @@ function NotFoundPage() {
 function AppShell() {
   return (
     <Router basename={BASENAME}>
-      <ScrollToTop />
-      <RouteAnnouncer />
-      <NetworkStatusBanner />
-      <PrefetchOnIdle />
+      <AuthProvider>
+        <ScrollToTop />
+        <RouteAnnouncer />
+        <NetworkStatusBanner />
+        <PrefetchOnIdle />
 
       <div className="min-h-screen bg-neutral-50">
         <Suspense fallback={<PageSuspenseFallback message={`Loading ${APP_NAME}...`} />}>
@@ -311,6 +312,7 @@ function AppShell() {
 
 
       </div>
+      </AuthProvider>
     </Router>
   );
 }
@@ -324,9 +326,7 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <AppShell />
-        </AuthProvider>
+        <AppShell />
       </QueryClientProvider>
     </ErrorBoundary>
   );

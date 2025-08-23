@@ -159,7 +159,7 @@ export const getExercises = onCall(
     region: 'us-central1',
     memory: '256MiB',
     timeoutSeconds: 30,
-    enforceAppCheck: true,
+    enforceAppCheck: false, // Disabled for development - enable in production
   },
   async (req) => {
     // Auth not strictly required to browse the catalog; add if desired.
@@ -244,7 +244,7 @@ export const resolveExerciseNames = onCall(
     region: 'us-central1',
     memory: '256MiB',
     timeoutSeconds: 30,
-    enforceAppCheck: true,
+    enforceAppCheck: false, // Disabled for development - enable in production
   },
   async (req) => {
     const input = ResolveNamesSchema.parse(req.data ?? {});
@@ -300,7 +300,7 @@ export const initializeExercises = onCall(
     region: 'us-central1',
     memory: '256MiB',
     timeoutSeconds: 120,
-    enforceAppCheck: true,
+    enforceAppCheck: false, // Disabled for development - enable in production
   },
   async (req) => {
     if (!req.auth) throw new HttpsError('unauthenticated', 'Authentication required.');

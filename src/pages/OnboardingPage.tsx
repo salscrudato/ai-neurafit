@@ -1,15 +1,14 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { OnboardingStep1 } from '../components/onboarding/OnboardingStep1';
 import { OnboardingStep2 } from '../components/onboarding/OnboardingStep2';
 import { OnboardingStep3 } from '../components/onboarding/OnboardingStep3';
 import { OnboardingStep4 } from '../components/onboarding/OnboardingStep4';
-import { OnboardingStep5 } from '../components/onboarding/OnboardingStep5';
 import { UserProfileService } from '../services/userProfileService';
 import { useAuthStore } from '../store/authStore';
 import type { FitnessLevel, FitnessGoal, Equipment, WorkoutType } from '../types';
-import { Button } from '../components/ui/Button';
+
 
 interface OnboardingData {
   fitnessLevel: FitnessLevel | null;
@@ -36,7 +35,7 @@ export const OnboardingPage: React.FC = () => {
   const { setOnboardingCompleted, setError, clearError } = useAuthStore();
 
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 5;
+  const totalSteps = 4;
 
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
     fitnessLevel: null,
@@ -48,9 +47,9 @@ export const OnboardingPage: React.FC = () => {
       preferredTimes: [],
     },
     preferences: {
-      workoutTypes: [],
+      workoutTypes: ['strength_training'], // Default to strength training
       intensity: 'moderate',
-      restDayPreference: 1,
+      restDayPreference: 1, // Default to Monday as rest day
       injuriesOrLimitations: [],
     },
   });
@@ -128,24 +127,7 @@ export const OnboardingPage: React.FC = () => {
     };
   }, []);
 
-  /* ------------------------------ Derived preview ------------------------------ */
 
-  const weeklyMinutes = useMemo(
-    () =>
-      (onboardingData.timeCommitment?.daysPerWeek || 0) *
-      (onboardingData.timeCommitment?.minutesPerSession || 0),
-    [onboardingData.timeCommitment],
-  );
-
-  const intensityScore = useMemo(() => {
-    const m = { low: 1, moderate: 2, high: 3 } as const;
-    return m[onboardingData.preferences.intensity];
-  }, [onboardingData.preferences.intensity]);
-
-  const trainingLoadEstimate = useMemo(
-    () => weeklyMinutes * intensityScore,
-    [weeklyMinutes, intensityScore],
-  );
 
   /* -------------------------------- Validation -------------------------------- */
 
@@ -167,11 +149,7 @@ export const OnboardingPage: React.FC = () => {
       if (!preferredTimes || !preferredTimes.length)
         return 'Select at least one preferred time of day.';
     }
-    if (step === 5) {
-      // preferences.intensity required by default state; restDayPreference 0..6
-      const rdp = data.preferences.restDayPreference;
-      if (rdp < 0 || rdp > 6) return 'Choose a rest day (0–6).';
-    }
+
     return null;
   };
 
@@ -253,10 +231,8 @@ export const OnboardingPage: React.FC = () => {
       case 3:
         return <OnboardingStep3 {...stepProps} onNext={nextStep} onPrev={prevStep} />;
       case 4:
-        return <OnboardingStep4 {...stepProps} onNext={nextStep} onPrev={prevStep} />;
-      case 5:
         return (
-          <OnboardingStep5
+          <OnboardingStep4
             {...stepProps}
             onComplete={handleComplete}
             onPrev={prevStep}
@@ -320,23 +296,7 @@ export const OnboardingPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Derived preview */}
-        <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="rounded-lg border border-neutral-200 bg-white p-3 text-center">
-            <div className="text-xs text-neutral-500">Weekly minutes</div>
-            <div className="text-xl font-semibold text-neutral-900">{weeklyMinutes}</div>
-          </div>
-          <div className="rounded-lg border border-neutral-200 bg-white p-3 text-center">
-            <div className="text-xs text-neutral-500">Intensity</div>
-            <div className="text-xl font-semibold text-neutral-900">
-              {onboardingData.preferences.intensity}
-            </div>
-          </div>
-          <div className="rounded-lg border border-neutral-200 bg-white p-3 text-center">
-            <div className="text-xs text-neutral-500">Training load (est.)</div>
-            <div className="text-xl font-semibold text-neutral-900">{trainingLoadEstimate}</div>
-          </div>
-        </div>
+
 
         {/* Step Error */}
         {stepError && (
@@ -358,39 +318,7 @@ export const OnboardingPage: React.FC = () => {
           </motion.div>
         </AnimatePresence>
 
-        {/* Footer actions */}
-        <div className="mt-6 flex items-center justify-between">
-          <Button
-            variant="ghost"
-            onClick={() => {
-              try {
-                localStorage.setItem(
-                  STORAGE_KEY,
-                  JSON.stringify({ data: onboardingData, currentStep }),
-                );
-                dirtyRef.current = false;
-              } catch {}
-              navigate('/app');
-            }}
-          >
-            Save & exit
-          </Button>
 
-          <div className="flex items-center gap-3">
-            {currentStep > 1 && (
-              <Button variant="outline" onClick={prevStep}>
-                Back
-              </Button>
-            )}
-            {currentStep < totalSteps ? (
-              <Button onClick={nextStep}>Next</Button>
-            ) : (
-              <Button onClick={handleComplete} loading={submitting} disabled={submitting}>
-                Finish
-              </Button>
-            )}
-          </div>
-        </div>
       </div>
     </div>
   );

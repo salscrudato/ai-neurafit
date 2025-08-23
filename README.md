@@ -20,14 +20,14 @@ Your AI-powered personal fitness trainer. Get personalized workouts that adapt t
 npm start
 ```
 
-#### Option 2: Manual Setup
+#### Option 2: Manual Setup (Recommended for Development)
 ```bash
-# Terminal 1 - Frontend
-npm install
-npm run dev
+# Terminal 1 - Backend (Firebase Emulators)
+cd functions
+npm start
 
-# Terminal 2 - Backend (in new terminal)
-firebase emulators:start
+# Terminal 2 - Frontend (React/Vite)
+npm run dev
 ```
 
 #### Option 3: Frontend Only
@@ -47,11 +47,14 @@ npm run dev
 
 ```bash
 # Development
-npm start               # Start both frontend and backend (recommended)
-npm run dev             # Start frontend only
-npm run dev:full        # Alternative: Start with shell script
+npm start               # Start both frontend and backend together
+npm run dev             # Start frontend only (Vite dev server)
+npm run dev:backend     # Start backend only (from root)
 npm run emulators       # Start Firebase emulators only
 npm run functions:dev   # Start functions only
+
+# Manual Backend (recommended for development)
+cd functions && npm start  # Start all Firebase emulators
 
 # Building
 npm run build          # Build for production

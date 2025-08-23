@@ -1,7 +1,17 @@
 import React, { memo, useId, useMemo, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Button } from '../ui/Button';
-import { XMarkIcon as XIcon } from '@heroicons/react/24/outline';
+import {
+  UserIcon,
+  CubeIcon,
+  Bars3BottomLeftIcon,
+  ScaleIcon,
+  LinkIcon,
+  Bars3Icon,
+  RectangleGroupIcon,
+  BoltIcon,
+  BuildingOffice2Icon
+} from '@heroicons/react/24/outline';
 import type { Equipment } from '../../types';
 
 interface OnboardingStep3Props {
@@ -14,21 +24,20 @@ interface OnboardingStep3Props {
 type EquipmentOption = {
   equipment: Equipment;
   title: string;
-  description: string;
-  emoji: string;
-  emojiLabel: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
 };
 
 const equipmentOptions: ReadonlyArray<EquipmentOption> = [
-  { equipment: 'bodyweight',       title: 'Bodyweight Only',   description: 'No equipment needed',              emoji: '🏃‍♂️', emojiLabel: 'bodyweight' },
-  { equipment: 'dumbbells',        title: 'Dumbbells',         description: 'Adjustable or fixed weights',      emoji: '🏋️‍♀️', emojiLabel: 'dumbbells' },
-  { equipment: 'barbell',          title: 'Barbell',           description: 'Olympic or standard barbell',      emoji: '🏋️‍♂️', emojiLabel: 'barbell' },
-  { equipment: 'kettlebells',      title: 'Kettlebells',       description: 'Various weights available',        emoji: '⚖️',   emojiLabel: 'kettlebell' },
-  { equipment: 'resistance_bands', title: 'Resistance Bands',  description: 'Loop bands or tube bands',         emoji: '🎯',   emojiLabel: 'resistance bands' },
-  { equipment: 'pull_up_bar',      title: 'Pull-up Bar',       description: 'Doorway or wall-mounted',          emoji: '🚪',   emojiLabel: 'pull-up bar' },
-  { equipment: 'yoga_mat',         title: 'Yoga Mat',          description: 'For floor exercises',              emoji: '🧘‍♀️', emojiLabel: 'yoga mat' },
-  { equipment: 'cardio_machine',   title: 'Cardio Machine',    description: 'Treadmill, bike, elliptical',      emoji: '🚴‍♀️', emojiLabel: 'cardio machine' },
-  { equipment: 'gym_access',       title: 'Full Gym Access',   description: 'Complete gym facility',            emoji: '🏢',   emojiLabel: 'gym' },
+  { equipment: 'bodyweight',       title: 'Bodyweight Only',   icon: UserIcon,              color: 'text-blue-600' },
+  { equipment: 'dumbbells',        title: 'Dumbbells',         icon: CubeIcon,              color: 'text-purple-600' },
+  { equipment: 'barbell',          title: 'Barbell',           icon: Bars3BottomLeftIcon,   color: 'text-orange-600' },
+  { equipment: 'kettlebells',      title: 'Kettlebells',       icon: ScaleIcon,             color: 'text-red-600' },
+  { equipment: 'resistance_bands', title: 'Resistance Bands',  icon: LinkIcon,              color: 'text-green-600' },
+  { equipment: 'pull_up_bar',      title: 'Pull-up Bar',       icon: Bars3Icon,             color: 'text-indigo-600' },
+  { equipment: 'yoga_mat',         title: 'Yoga Mat',          icon: RectangleGroupIcon,    color: 'text-pink-600' },
+  { equipment: 'cardio_machine',   title: 'Cardio Machine',    icon: BoltIcon,              color: 'text-yellow-600' },
+  { equipment: 'gym_access',       title: 'Full Gym Access',   icon: BuildingOffice2Icon,   color: 'text-gray-600' },
 ];
 
 export const OnboardingStep3: React.FC<OnboardingStep3Props> = memo(
@@ -52,7 +61,7 @@ export const OnboardingStep3: React.FC<OnboardingStep3Props> = memo(
       onUpdate({ availableEquipment: next });
     };
 
-    const clearAll = () => onUpdate({ availableEquipment: [] });
+
 
     // Roving focus index (default to first)
     const firstIdx = selected.length
@@ -109,7 +118,7 @@ export const OnboardingStep3: React.FC<OnboardingStep3Props> = memo(
 
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-neutral-900 mb-2">
-            What equipment do you have access to?
+            What equipment do you have?
           </h2>
           <p id={descId} className="text-neutral-600">
             Select all that apply. Don’t have any? That’s fine—bodyweight programs work great.
@@ -121,7 +130,7 @@ export const OnboardingStep3: React.FC<OnboardingStep3Props> = memo(
           role="group"
           aria-labelledby={`${groupId}-label`}
           aria-describedby={descId}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6"
+          className="grid grid-cols-2 gap-4 mb-6"
         >
           <span id={`${groupId}-label`} className="sr-only">
             Choose available equipment
@@ -145,90 +154,28 @@ export const OnboardingStep3: React.FC<OnboardingStep3Props> = memo(
                   onKeyDown={(e) => onItemKeyDown(e, index, option.equipment)}
                   onClick={() => toggle(option.equipment)}
                   className={[
-                    'w-full p-4 rounded-xl border-2 transition-all duration-200 text-center bg-white',
+                    'w-full p-6 rounded-xl border-2 transition-all duration-200 text-center',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2',
                     selectedNow
-                      ? 'border-primary-500 bg-primary-50 shadow-md'
-                      : 'border-neutral-200 hover:border-neutral-300 hover:shadow-sm',
+                      ? `border-primary-500 bg-primary-50 shadow-md`
+                      : 'border-neutral-200 bg-white hover:border-neutral-300 hover:shadow-sm',
                   ].join(' ')}
                 >
-                  <div className="text-3xl mb-2">
-                    <span role="img" aria-label={option.emojiLabel}>
-                      {option.emoji}
-                    </span>
+                  <div className="mb-3 flex justify-center">
+                    <option.icon className={`h-8 w-8 ${selectedNow ? 'text-primary-600' : 'text-neutral-400'} transition-colors duration-200`} />
                   </div>
-                  <h3 className="font-semibold text-neutral-900 mb-1">{option.title}</h3>
-                  <p className="text-sm text-neutral-600">{option.description}</p>
-
-                  {selectedNow && (
-                    <div className="mt-2 inline-flex items-center justify-center w-5 h-5 bg-primary-600 rounded-full">
-                      <svg className="w-3 h-3 text-white" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path
-                          fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                  )}
+                  <h3 className={`font-semibold ${selectedNow ? 'text-primary-900' : 'text-neutral-900'} transition-colors duration-200`}>
+                    {option.title}
+                  </h3>
                 </button>
               </motion.div>
             );
           })}
         </div>
 
-        {/* Quick help when nothing selected */}
-        {selected.length === 0 && (
-          <div className="mb-6 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-700">
-            Not sure where to start?{' '}
-            <button
-              type="button"
-              className="font-medium text-primary-700 hover:text-primary-800 underline underline-offset-2"
-              onClick={() => toggle('bodyweight' as Equipment)}
-            >
-              Choose Bodyweight Only
-            </button>
-            — you can always add gear later.
-          </div>
-        )}
 
-        {/* Selection summary */}
-        {selected.length > 0 && (
-          <div className="mb-6 rounded-lg border border-primary-100 bg-primary-50 px-3 py-2">
-            <p className="text-sm text-primary-700">
-              <strong>Selected equipment:</strong> {selected.length} item{selected.length !== 1 ? 's' : ''} selected
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2" aria-live="polite">
-              {equipmentOptions
-                .filter((o) => selected.includes(o.equipment))
-                .map((o) => (
-                  <span
-                    key={o.equipment}
-                    className="inline-flex items-center gap-1 rounded-full border border-primary-200 bg-white px-3 py-1 text-xs font-medium text-neutral-700"
-                  >
-                    {o.title}
-                    <button
-                      type="button"
-                      aria-label={`Remove ${o.title}`}
-                      onClick={() => toggle(o.equipment)}
-                      className="ml-1 rounded-full p-0.5 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
-                    >
-                      <XIcon className="h-3.5 w-3.5 text-neutral-500" aria-hidden="true" />
-                    </button>
-                  </span>
-                ))}
-              {selected.length > 1 && (
-                <button
-                  type="button"
-                  onClick={clearAll}
-                  className="text-xs font-medium text-primary-700 hover:text-primary-800 underline underline-offset-2"
-                >
-                  Clear all
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+
+
 
         <div className="flex justify-between">
           <Button variant="outline" onClick={onPrev} size="lg" className="px-8">

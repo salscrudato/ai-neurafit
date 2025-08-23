@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "start": "concurrently \"npm run dev\" \"firebase emulators:start\" --names \"frontend,backend\" --prefix-colors \"cyan,yellow\"",
     "dev:full": "./start-dev.sh",
+    "dev:backend": "cd functions && npm start",
     "emulators": "firebase emulators:start",
     "functions:dev": "cd functions && npm run serve",
     "deploy": "npm run build && firebase deploy"
@@ -20,6 +21,7 @@
     "@tanstack/react-query": "^5.85.5",
     "autoprefixer": "^10.4.21",
     "firebase": "^12.1.0",
+    "firebase-functions": "^6.4.0",
     "framer-motion": "^12.23.12",
     "postcss": "^8.5.6",
     "react": "^19.1.1",

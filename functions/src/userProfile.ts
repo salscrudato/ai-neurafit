@@ -11,11 +11,12 @@ import { logger } from 'firebase-functions';
 import { z } from 'zod';
 import { createHash } from 'crypto';
 import { db, admin } from './shared';
+import { FieldValue } from 'firebase-admin/firestore';
 
 /* -----------------------------------------------------------------------------
  * Schema & validation
  * ---------------------------------------------------------------------------*/
-const PreferredTime = z.enum(['morning', 'afternoon', 'evening', 'variable']);
+const PreferredTime = z.enum(['early_morning', 'morning', 'midday', 'afternoon', 'evening', 'night', 'variable']);
 const Intensity = z.enum(['low', 'moderate', 'high']);
 const FitnessLevel = z.enum(['beginner', 'intermediate', 'advanced']);
 
@@ -161,7 +162,8 @@ export const createUserProfile = onCall(
     region: 'us-central1',
     memory: '256MiB',
     timeoutSeconds: 60,
-    enforceAppCheck: true, // require App Check from client
+    enforceAppCheck: false, // Disabled for development - enable in production
+    cors: true, // Enable CORS for development
   },
   async (req) => {
     const uid = requireAuth(req);
@@ -170,7 +172,7 @@ export const createUserProfile = onCall(
     const parsed = UserProfileSchema.parse(req.data ?? {});
     const normalized = normalizeInput(parsed);
     const system = computeDerived(normalized);
-    const now = admin.firestore.FieldValue.serverTimestamp();
+    const now = FieldValue.serverTimestamp();
 
     try {
       await db.runTransaction(async (tx) => {
@@ -214,7 +216,8 @@ export const getUserProfile = onCall(
     region: 'us-central1',
     memory: '128MiB',
     timeoutSeconds: 30,
-    enforceAppCheck: true,
+    enforceAppCheck: false, // Disabled for development - enable in production
+    cors: true, // Enable CORS for development
   },
   async (req) => {
     const uid = requireAuth(req);
@@ -239,7 +242,8 @@ export const updateUserProfile = onCall(
     region: 'us-central1',
     memory: '256MiB',
     timeoutSeconds: 60,
-    enforceAppCheck: true,
+    enforceAppCheck: false, // Disabled for development - enable in production
+    cors: true, // Enable CORS for development
   },
   async (req) => {
     const uid = requireAuth(req);
@@ -302,7 +306,7 @@ export const updateUserProfile = onCall(
         const update = {
           ...normalized,
           system,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
         };
 
         tx.set(ref, update, { merge: true });

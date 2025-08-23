@@ -4,11 +4,9 @@ import {
   ScaleIcon,
   BoltIcon,
   HeartIcon,
-  FireIcon,
   SparklesIcon,
   ShieldCheckIcon,
   TrophyIcon,
-  XMarkIcon as XIcon, // if not available, swap with a small "×" text
 } from '@heroicons/react/24/outline';
 import { Button } from '../ui/Button';
 import type { FitnessGoal } from '../../types';
@@ -43,7 +41,7 @@ const GOALS: ReadonlyArray<GoalOption> = [
   {
     goal: 'build_muscle' as FitnessGoal,
     title: 'Build Muscle',
-    description: 'Increase muscle mass and strength',
+    description: 'Gain muscle mass and strength',
     icon: BoltIcon,
     color: 'text-blue-600',
     bgColor: 'bg-blue-50',
@@ -52,25 +50,16 @@ const GOALS: ReadonlyArray<GoalOption> = [
   {
     goal: 'improve_cardio' as FitnessGoal,
     title: 'Improve Cardio',
-    description: 'Enhance cardiovascular endurance',
+    description: 'Boost cardiovascular endurance',
     icon: HeartIcon,
     color: 'text-pink-600',
     bgColor: 'bg-pink-50',
     borderColor: 'border-pink-200',
   },
   {
-    goal: 'increase_strength' as FitnessGoal,
-    title: 'Increase Strength',
-    description: 'Build functional strength and power',
-    icon: FireIcon,
-    color: 'text-orange-600',
-    bgColor: 'bg-orange-50',
-    borderColor: 'border-orange-200',
-  },
-  {
     goal: 'improve_flexibility' as FitnessGoal,
     title: 'Improve Flexibility',
-    description: 'Enhance mobility and range of motion',
+    description: 'Enhance mobility and movement',
     icon: SparklesIcon,
     color: 'text-purple-600',
     bgColor: 'bg-purple-50',
@@ -88,7 +77,7 @@ const GOALS: ReadonlyArray<GoalOption> = [
   {
     goal: 'sport_specific' as FitnessGoal,
     title: 'Sport Specific',
-    description: 'Train for specific sports or activities',
+    description: 'Train for specific sports',
     icon: TrophyIcon,
     color: 'text-yellow-600',
     bgColor: 'bg-yellow-50',
@@ -160,12 +149,7 @@ export const OnboardingStep2: React.FC<OnboardingStep2Props> = memo(
       }
     };
 
-    const clearAll = () => onUpdate({ fitnessGoals: [] });
 
-    const selectedMeta = useMemo(
-      () => GOALS.filter((g) => selected.includes(g.goal)),
-      [selected],
-    );
 
     return (
       <div className="card relative overflow-hidden">
@@ -259,43 +243,7 @@ export const OnboardingStep2: React.FC<OnboardingStep2Props> = memo(
           })}
         </div>
 
-        {/* Selection summary */}
-        {selectedMeta.length > 0 && (
-          <div className="mb-6 rounded-lg border border-primary-100 bg-primary-50 px-3 py-2">
-            <p className="text-sm text-primary-700">
-              <strong>Selected:</strong> {selectedMeta.length}{' '}
-              goal{selectedMeta.length !== 1 ? 's' : ''} chosen.
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2" aria-live="polite">
-              {selectedMeta.map((g) => (
-                <span
-                  key={g.goal}
-                  className="inline-flex items-center gap-1 rounded-full border border-primary-200 bg-white px-3 py-1 text-xs font-medium text-neutral-700"
-                >
-                  {g.title}
-                  <button
-                    type="button"
-                    aria-label={`Remove ${g.title}`}
-                    onClick={() => toggle(g.goal)}
-                    className="ml-1 rounded-full p-0.5 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
-                  >
-                    {/* If XIcon isn't available, replace with &times; */}
-                    <XIcon className="h-3.5 w-3.5 text-neutral-500" aria-hidden="true" />
-                  </button>
-                </span>
-              ))}
-              {selectedMeta.length > 1 && (
-                <button
-                  type="button"
-                  onClick={clearAll}
-                  className="text-xs font-medium text-primary-700 hover:text-primary-800 underline underline-offset-2"
-                >
-                  Clear all
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+
 
         <div className="flex justify-between">
           <Button variant="outline" onClick={onPrev} size="lg" className="px-8">

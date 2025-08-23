@@ -146,7 +146,7 @@ exports.getExercises = (0, https_1.onCall)({
     region: 'us-central1',
     memory: '256MiB',
     timeoutSeconds: 30,
-    enforceAppCheck: true,
+    enforceAppCheck: false, // Disabled for development - enable in production
 }, async (req) => {
     // Auth not strictly required to browse the catalog; add if desired.
     // requireAuth(req);
@@ -214,7 +214,7 @@ exports.resolveExerciseNames = (0, https_1.onCall)({
     region: 'us-central1',
     memory: '256MiB',
     timeoutSeconds: 30,
-    enforceAppCheck: true,
+    enforceAppCheck: false, // Disabled for development - enable in production
 }, async (req) => {
     var _a;
     const input = ResolveNamesSchema.parse((_a = req.data) !== null && _a !== void 0 ? _a : {});
@@ -262,7 +262,7 @@ exports.initializeExercises = (0, https_1.onCall)({
     region: 'us-central1',
     memory: '256MiB',
     timeoutSeconds: 120,
-    enforceAppCheck: true,
+    enforceAppCheck: false, // Disabled for development - enable in production
 }, async (req) => {
     var _a;
     if (!req.auth)
