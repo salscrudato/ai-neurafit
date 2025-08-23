@@ -45,6 +45,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.onAuthUserDelete = exports.onAuthUserCreate = void 0;
 const functions = __importStar(require("firebase-functions"));
 const shared_1 = require("./shared");
+const firestore_1 = require("firebase-admin/firestore");
 /* ------------------------------ Utilities ------------------------------ */
 /** Delete all docs matching a simple equality query in batches (<=500 ops). */
 async function deleteByQuery(collection, field, value, { batchSize = 300 } = {}) {
@@ -86,7 +87,7 @@ exports.onAuthUserCreate = functions
     .auth.user()
     .onCreate(async (user) => {
     var _a, _b, _c, _d, _e, _f, _g, _h;
-    const now = shared_1.admin.firestore.FieldValue.serverTimestamp();
+    const now = firestore_1.FieldValue.serverTimestamp();
     // Public/user doc (kept lean; avoid storing sensitive data)
     const userDoc = {
         id: user.uid,

@@ -63,6 +63,7 @@ const ROUTE_NAMES: Record<string, string> = {
   '/app/workout': 'Workout',
   '/app/history': 'History',
   '/app/profile': 'Profile',
+  '/app/settings': 'Settings',
 };
 
 /* ---------- Lazy pages (code splitting) ---------- */
@@ -93,6 +94,11 @@ const HistoryPage = lazy(() =>
 const ProfilePage = lazy(() =>
   import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })),
 );
+/** NEW: Settings */
+const SettingsPage = lazy(() =>
+  import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })),
+);
+
 const Layout = lazy(() =>
   import('./components/layout/Layout').then((m) => ({ default: m.Layout })),
 );
@@ -216,6 +222,7 @@ function PrefetchOnIdle() {
       void import('./pages/WorkoutPage').catch(() => {});
       void import('./pages/ProfilePage').catch(() => {});
       void import('./pages/HistoryPage').catch(() => {});
+      void import('./pages/SettingsPage').catch(() => {}); // NEW
     };
 
     const w = window as any;
@@ -260,84 +267,93 @@ function AppShell() {
         <NetworkStatusBanner />
         <PrefetchOnIdle />
 
-      <div className="min-h-screen bg-neutral-50">
-        <Suspense fallback={<PageSuspenseFallback message={`Loading ${APP_NAME}...`} />}>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <div className="min-h-screen bg-neutral-50">
+          <Suspense fallback={<PageSuspenseFallback message={`Loading ${APP_NAME}...`} />}>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignupPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-            {/* Protected routes */}
-            <Route
-              path="/onboarding"
-              element={
-                <ProtectedRoute>
-                  <OnboardingPage />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/app"
-              element={
-                <ProtectedRoute>
-                  <Suspense fallback={<PageSuspenseFallback message="Loading app..." />}>
-                    <Layout />
-                  </Suspense>
-                </ProtectedRoute>
-              }
-            >
+              {/* Protected routes */}
               <Route
-                index
+                path="/onboarding"
                 element={
-                  <Suspense
-                    fallback={<PageSuspenseFallback message="Loading dashboard..." />}
-                  >
-                    <DashboardPage />
-                  </Suspense>
+                  <ProtectedRoute>
+                    <OnboardingPage />
+                  </ProtectedRoute>
                 }
               />
-              <Route
-                path="workout"
-                element={
-                  <Suspense
-                    fallback={<PageSuspenseFallback message="Loading workout..." />}
-                  >
-                    <WorkoutPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="history"
-                element={
-                  <Suspense
-                    fallback={<PageSuspenseFallback message="Loading history..." />}
-                  >
-                    <HistoryPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="profile"
-                element={
-                  <Suspense
-                    fallback={<PageSuspenseFallback message="Loading profile..." />}
-                  >
-                    <ProfilePage />
-                  </Suspense>
-                }
-              />
-            </Route>
 
-            {/* Catch-all */}
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </Suspense>
+              <Route
+                path="/app"
+                element={
+                  <ProtectedRoute>
+                    <Suspense fallback={<PageSuspenseFallback message="Loading app..." />}>
+                      <Layout />
+                    </Suspense>
+                  </ProtectedRoute>
+                }
+              >
+                <Route
+                  index
+                  element={
+                    <Suspense
+                      fallback={<PageSuspenseFallback message="Loading dashboard..." />}
+                    >
+                      <DashboardPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="workout"
+                  element={
+                    <Suspense
+                      fallback={<PageSuspenseFallback message="Loading workout..." />}
+                    >
+                      <WorkoutPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="history"
+                  element={
+                    <Suspense
+                      fallback={<PageSuspenseFallback message="Loading history..." />}
+                    >
+                      <HistoryPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="profile"
+                  element={
+                    <Suspense
+                      fallback={<PageSuspenseFallback message="Loading profile..." />}
+                    >
+                      <ProfilePage />
+                    </Suspense>
+                  }
+                />
+                {/* NEW: Settings */}
+                <Route
+                  path="settings"
+                  element={
+                    <Suspense
+                      fallback={<PageSuspenseFallback message="Loading settings..." />}
+                    >
+                      <SettingsPage />
+                    </Suspense>
+                  }
+                />
+              </Route>
 
-
-      </div>
+              {/* Catch-all */}
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </Suspense>
+        </div>
       </AuthProvider>
     </Router>
   );
@@ -971,9 +987,91 @@ export default app;
 **Description:** Shared TypeScript type definitions for the application
 
 ```typescript
-// User Types
+/**
+ * NeuraFit — Shared Domain Types
+ * --------------------------------------------------------------------------
+ * This file defines the domain model used across pages, services, and store.
+ * It is designed to be:
+ *  - Backward‑compatible with existing code (same field names/shapes).
+ *  - Easy to consume in UI (exported literal arrays for pickers).
+ *  - Clear on units (seconds/minutes) and semantics via JSDoc.
+ */
+
+/* =============================================================================
+ * Utility Aliases (non-breaking, optional)
+ * ============================================================================= */
+
+/** Describes an ISO 8601 date-time string (e.g., "2025-01-31T12:00:00.000Z"). */
+export type ISODateString = string;
+/** Seconds (e.g., restTime, interval durations). Plain number with docs. */
+export type Seconds = number;
+/** Minutes (e.g., estimatedDuration, session length). Plain number with docs. */
+export type Minutes = number;
+/** Simple branded ID helpers (optional; still compatible with plain string). */
+export type Id<T extends string> = string & { readonly __idBrand?: T };
+export type UserId = Id<'User'>;
+export type WorkoutPlanId = Id<'WorkoutPlan'>;
+export type WorkoutSessionId = Id<'WorkoutSession'>;
+export type ExerciseId = Id<'Exercise'>;
+
+/* =============================================================================
+ * Literals & Unions
+ * ============================================================================= */
+
+export const FITNESS_LEVELS = ['beginner', 'intermediate', 'advanced'] as const;
+export type FitnessLevel = (typeof FITNESS_LEVELS)[number];
+
+export const FITNESS_GOALS = [
+  'lose_weight',
+  'build_muscle',
+  'improve_cardio',
+  'improve_flexibility',
+  'general_fitness',
+  'sport_specific',
+] as const;
+export type FitnessGoal = (typeof FITNESS_GOALS)[number];
+
+export const EQUIPMENT_TYPES = [
+  'bodyweight',
+  'dumbbells',
+  'barbell',
+  'kettlebells',
+  'resistance_bands',
+  'pull_up_bar',
+  'yoga_mat',
+  'cardio_machine',
+  'gym_access',
+] as const;
+export type Equipment = (typeof EQUIPMENT_TYPES)[number];
+
+export const WORKOUT_TYPES = [
+  'strength_training',
+  'cardio',
+  'hiit',
+  'yoga',
+  'pilates',
+  'stretching',
+  'functional',
+  'circuit',
+] as const;
+export type WorkoutType = (typeof WORKOUT_TYPES)[number];
+
+/** Common 3‑step intensity that matches onboarding & generator UI. */
+export type Intensity = 'low' | 'moderate' | 'high';
+
+/** Canonical status values for workout sessions. */
+export type WorkoutStatus = 'in_progress' | 'completed' | 'paused' | 'cancelled';
+
+/** Optional hint for time‑of‑day selections (UI may still use raw strings). */
+export type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'night';
+
+/* =============================================================================
+ * Users & Profiles
+ * ============================================================================= */
+
+/** Authenticated user (client projection of Firebase user). */
 export interface User {
-  id: string;
+  id: string /* or UserId */;
   email: string;
   displayName?: string;
   photoURL?: string;
@@ -981,8 +1079,29 @@ export interface User {
   updatedAt: Date;
 }
 
+/**
+ * Scheduling/availability for plan generation.
+ * @example { daysPerWeek: 4, minutesPerSession: 45, preferredTimes: ['morning', 'evening'] }
+ */
+export interface TimeCommitment {
+  daysPerWeek: number;           // 1..7
+  minutesPerSession: Minutes;    // typical 10..180
+  preferredTimes: string[];      // free-form or use TimeOfDay[]
+}
+
+/** User preferences that influence generation/adaptation. */
+export interface UserPreferences {
+  workoutTypes: WorkoutType[];
+  intensity: Intensity;
+  /** 0=Sunday .. 6=Saturday (or use any convention your UI enforces) */
+  restDayPreference: number;
+  /** Free‑form list. Keep short, like "left knee", "lower back". */
+  injuriesOrLimitations: string[];
+}
+
+/** User profile stored in Firestore and used for AI generation. */
 export interface UserProfile {
-  userId: string;
+  userId: string /* or UserId */;
   fitnessLevel: FitnessLevel;
   fitnessGoals: FitnessGoal[];
   availableEquipment: Equipment[];
@@ -992,148 +1111,158 @@ export interface UserProfile {
   updatedAt: Date;
 }
 
-// Fitness Types
-export type FitnessLevel = 'beginner' | 'intermediate' | 'advanced';
+/* =============================================================================
+ * Exercises & Workouts
+ * ============================================================================= */
 
-export type FitnessGoal =
-  | 'lose_weight'
-  | 'build_muscle'
-  | 'improve_cardio'
-  | 'improve_flexibility'
-  | 'general_fitness'
-  | 'sport_specific';
-
-export type Equipment = 
-  | 'bodyweight'
-  | 'dumbbells'
-  | 'barbell'
-  | 'kettlebells'
-  | 'resistance_bands'
-  | 'pull_up_bar'
-  | 'yoga_mat'
-  | 'cardio_machine'
-  | 'gym_access';
-
-export interface TimeCommitment {
-  daysPerWeek: number;
-  minutesPerSession: number;
-  preferredTimes: string[];
-}
-
-export interface UserPreferences {
-  workoutTypes: WorkoutType[];
-  intensity: 'low' | 'moderate' | 'high';
-  restDayPreference: number;
-  injuriesOrLimitations: string[];
-}
-
-// Workout Types
-export type WorkoutType = 
-  | 'strength_training'
-  | 'cardio'
-  | 'hiit'
-  | 'yoga'
-  | 'pilates'
-  | 'stretching'
-  | 'functional'
-  | 'circuit';
-
+/**
+ * Exercise catalogue entry.
+ * - `duration`/`reps`/`sets` are default suggestions; a plan can override per workout.
+ */
 export interface Exercise {
-  id: string;
+  id: string /* or ExerciseId */;
   name: string;
   description: string;
   instructions: string[];
-  targetMuscles: string[];
+  targetMuscles: string[];           // keep string[] for compatibility; derive unions later if needed
   equipment: Equipment[];
   difficulty: FitnessLevel;
-  duration?: number; // in seconds
+
+  /** Defaults (may be overridden in a plan) */
+  duration?: Seconds;                // e.g., 45 sec
   reps?: number;
   sets?: number;
-  restTime?: number; // in seconds
+  restTime?: Seconds;
+
   videoUrl?: string;
   imageUrl?: string;
+
   tips: string[];
-  progressionNotes?: string; // How to make this exercise harder/easier
-  alternatives?: string[]; // Alternative exercises if equipment unavailable
-  formCues?: string[]; // Key form points to focus on
+  progressionNotes?: string;         // How to scale up/down
+  alternatives?: string[];           // Names/IDs of alternates if equipment is missing
+  formCues?: string[];               // Key coaching cues
 }
 
+/**
+ * A single prescribed exercise inside a workout.
+ * Backward compatible: you can still use `reps?` and/or `duration?` directly.
+ * `scheme` is optional but helpful to signal intent in UIs.
+ */
+export interface WorkoutExercise {
+  exerciseId: string /* or ExerciseId */;
+  exercise: Exercise;
+
+  /** Number of working sets for this exercise (not including warmup sets). */
+  sets: number;
+
+  /** Choose one or both, depending on the protocol (kept optional for compatibility). */
+  reps?: number;         // repetition‑based scheme
+  duration?: Seconds;    // time‑based scheme (e.g., EMOM, AMRAP, intervals)
+
+  /** Planned intra‑set rest. */
+  restTime: Seconds;
+
+  /** Optional load (kg/lb); leave undefined for BW or variable progression. */
+  weight?: number;
+
+  notes?: string;
+  /** Stable ordering within the workout. 0‑based or 1‑based (UI decides). */
+  order: number;
+
+  /**
+   * Optional discriminator: when set, helps UIs pick correct controls.
+   * - "reps": rep‑count focus
+   * - "time": time‑under‑tension or interval focus
+   * - "hybrid": both reps and time supplied
+   */
+  scheme?: 'reps' | 'time' | 'hybrid';
+}
+
+/** Full workout definition produced by AI or authored manually. */
 export interface WorkoutPlan {
-  id: string;
-  userId: string;
+  id: string /* or WorkoutPlanId */;
+  userId: string /* or UserId */;
+
   name: string;
   description: string;
   type: WorkoutType;
   difficulty: FitnessLevel;
-  estimatedDuration: number; // in minutes
+
+  /** Estimated total time to complete (minutes). */
+  estimatedDuration: Minutes;
+
+  /** Main block of the workout in execution order. */
   exercises: WorkoutExercise[];
+
+  /** Equipment needed to complete this workout. */
   equipment: Equipment[];
+
+  /** Broad tags for filtering/search (kept string[] for compatibility). */
   targetMuscles: string[];
+
   createdAt: Date;
+
+  /** Meta */
   aiGenerated: boolean;
-  personalizedFor: string; // user preferences snapshot
-  warmUp?: WorkoutExercise[]; // Dedicated warm-up exercises
-  coolDown?: WorkoutExercise[]; // Dedicated cool-down exercises
-  progressionTips?: string[]; // How to progress this workout over time
-  motivationalQuote?: string; // Inspirational message for the workout
-  calorieEstimate?: number; // Estimated calories burned
-  adaptedFrom?: string; // ID of workout this was adapted from
-  adaptationReason?: string; // Why this workout was adapted
+  /** Snapshot summary of the user context used for personalization (free‑form). */
+  personalizedFor: string;
+
+  /** Optional structured warm‑up/cool‑down blocks. */
+  warmUp?: WorkoutExercise[];
+  coolDown?: WorkoutExercise[];
+
+  /** Coaching & adherence helpers */
+  progressionTips?: string[];
+  motivationalQuote?: string;
+  calorieEstimate?: number;
+
+  /** Provenance for adaptive flows */
+  adaptedFrom?: string;       // workout ID this was adapted from
+  adaptationReason?: string;  // explanation for user
 }
 
-export interface WorkoutExercise {
-  exerciseId: string;
-  exercise: Exercise;
-  sets: number;
+/* =============================================================================
+ * Sessions & Tracking
+ * ============================================================================= */
+
+/** A set completed within an exercise during a session. */
+export interface CompletedSet {
   reps?: number;
-  duration?: number; // in seconds
-  restTime: number; // in seconds
   weight?: number;
-  notes?: string;
-  order: number;
+  duration?: Seconds;
+  restTime?: Seconds;
+  completed: boolean;
 }
 
-export interface WorkoutSession {
-  id: string;
-  userId: string;
-  workoutPlanId: string;
-  workoutPlan: WorkoutPlan;
-  startTime: Date;
-  endTime?: Date;
-  completedExercises: CompletedExercise[];
-  status: 'in_progress' | 'completed' | 'paused' | 'cancelled';
-  notes?: string;
-  rating?: number; // 1-5 stars
-  feedback?: string;
-}
-
+/** Per‑exercise completion info for a session. */
 export interface CompletedExercise {
-  exerciseId: string;
+  exerciseId: string /* or ExerciseId */;
   sets: CompletedSet[];
   notes?: string;
   skipped: boolean;
   completedAt: Date;
 }
 
-export interface CompletedSet {
-  reps?: number;
-  weight?: number;
-  duration?: number; // in seconds
-  restTime?: number; // in seconds
-  completed: boolean;
-}
+/** A concrete instance of a user performing a workout plan. */
+export interface WorkoutSession {
+  id: string /* or WorkoutSessionId */;
+  userId: string /* or UserId */;
+  workoutPlanId: string /* or WorkoutPlanId */;
+  workoutPlan: WorkoutPlan;
 
-// Progress Tracking
-export interface ProgressMetrics {
-  userId: string;
-  date: Date;
-  weight?: number;
-  bodyFatPercentage?: number;
-  measurements?: BodyMeasurements;
-  photos?: string[];
+  startTime: Date;
+  endTime?: Date;
+
+  completedExercises: CompletedExercise[];
+  status: WorkoutStatus;
+
+  /** Optional post‑session reflection */
   notes?: string;
+  rating?: number;     // 1–5
+  feedback?: string;   // free‑form
 }
 
+/** Body metrics (unit system decided by UI; document in labels). */
 export interface BodyMeasurements {
   chest?: number;
   waist?: number;
@@ -1143,63 +1272,126 @@ export interface BodyMeasurements {
   neck?: number;
 }
 
-// AI Generation
+/** Lightweight progress log for trends & analytics. */
+export interface ProgressMetrics {
+  userId: string /* or UserId */;
+  date: Date;
+  weight?: number;
+  bodyFatPercentage?: number;
+  measurements?: BodyMeasurements;
+  photos?: string[];  // URLs or storage paths
+  notes?: string;
+}
+
+/* =============================================================================
+ * AI Generation & Adaptation
+ * ============================================================================= */
+
+/** Request payload to generate a workout for a specific user context. */
 export interface WorkoutGenerationRequest {
-  userId: string;
+  userId: string /* or UserId */;
+
   fitnessLevel: FitnessLevel;
   fitnessGoals: FitnessGoal[];
   availableEquipment: Equipment[];
   timeCommitment: TimeCommitment;
+
   workoutType: WorkoutType;
-  previousWorkouts?: string[]; // workout IDs for context
+
+  /** Optional context of previous workouts (IDs) for continuity. */
+  previousWorkouts?: string[];
+
+  /** Active preferences for this generation (combines baseline + overrides). */
   preferences: UserPreferences;
-  progressionLevel?: number; // 1-10 scale for workout progression
-  focusAreas?: string[]; // Specific muscle groups or skills to focus on
+
+  /** 1–10 coarser control for progression; higher → harder. */
+  progressionLevel?: number;
+
+  /** Optional focus tags (e.g., 'upper', 'core', 'mobility'). */
+  focusAreas?: string[];
 }
 
+/** Raw AI response used by the app to construct a plan record. */
 export interface AIWorkoutResponse {
+  /** The generated plan (without server‑side identity fields). */
   workoutPlan: Omit<WorkoutPlan, 'id' | 'userId' | 'createdAt'>;
+
+  /** Human‑readable rationale (great for tooltips or “Why this?” modals). */
   reasoning: string;
+
+  /** What was adapted vs baseline template. */
   adaptations: string[];
+
+  /** Suggestions to progress this workout over time. */
   progressionSuggestions: string[];
 }
 
-// Adaptive Workout Generation
+/** Inputs captured after a session to adapt the next one. */
 export interface AdaptiveWorkoutRequest {
   previousWorkoutId: string;
-  performanceRating: number; // 1-5 scale
-  completionRate: number; // 0-1 scale
+  /** Session feedback metrics */
+  performanceRating: number;     // 1–5
+  completionRate: number;        // 0..1
   difficultyFeedback: 'too_easy' | 'just_right' | 'too_hard';
-  timeActual: number; // actual time taken in minutes
-  specificFeedback?: string; // Optional detailed feedback
+  timeActual: Minutes;           // actual minutes
+  specificFeedback?: string;
 }
 
+/** Adaptive generation response. */
 export interface AdaptiveWorkoutResponse {
   success: boolean;
   workoutPlan: WorkoutPlan & { id: string };
   adaptations: {
+    /** New internal progression level chosen by the engine. */
     newProgressionLevel: number;
+    /** Scalar intensity adjustment (e.g., 0.9, 1.1). */
     intensityAdjustment: number;
+    /** Focus set for the next workout. */
     focusAreas: string[];
+    /** Human‑readable reason to surface in UI. */
     reason: string;
   };
 }
 
-// Workout Performance Tracking
+/* =============================================================================
+ * Analytics
+ * ============================================================================= */
+
+/** Minimal performance analytics snapshot per workout (for trends). */
 export interface WorkoutPerformance {
-  workoutId: string;
-  userId: string;
+  workoutId: string /* or WorkoutPlanId */;
+  userId: string /* or UserId */;
   startTime: Date;
   endTime: Date;
+
   completedExercises: number;
   totalExercises: number;
-  averageRestTime: number;
-  perceivedExertion: number; // 1-10 RPE scale
-  enjoymentRating: number; // 1-5 scale
-  difficultyRating: number; // 1-5 scale
+  averageRestTime: Seconds;
+
+  /** Self‑reported metrics */
+  perceivedExertion: number;   // RPE 1–10
+  enjoymentRating: number;     // 1–5
+  difficultyRating: number;    // 1–5
+
   notes?: string;
 }
 
+/* =============================================================================
+ * Optional DTO helpers (useful for services)
+ * ============================================================================= */
+
+/**
+ * Input shape for creating/updating a profile via cloud functions.
+ * Mirrors `UserProfile` but omits server-managed fields.
+ * Use in `UserProfileService` to avoid re-declaring string literal unions.
+ */
+export interface UserProfileInput {
+  fitnessLevel: FitnessLevel;
+  fitnessGoals: FitnessGoal[];
+  availableEquipment: Equipment[];
+  timeCommitment: TimeCommitment;
+  preferences: UserPreferences;
+}
 ```
 
 ---
@@ -1508,14 +1700,64 @@ export class AuthService {
 ```typescript
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../lib/firebase';
+import { logger } from '../utils/logger';
 import type {
   WorkoutGenerationRequest,
   WorkoutPlan,
   WorkoutSession,
   Exercise,
   AdaptiveWorkoutRequest,
-  AdaptiveWorkoutResponse
+  AdaptiveWorkoutResponse,
+  CompletedExercise,
+  FitnessLevel,
+  WorkoutType,
+  Equipment,
 } from '../types';
+
+/** ---- Shared helpers ------------------------------------------------------ */
+
+const CALLABLE_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(p: Promise<T>, ms = CALLABLE_TIMEOUT_MS, label = 'request'): Promise<T> {
+  let id: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    id = window.setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+  return Promise.race([p, timeout]).finally(() => clearTimeout(id));
+}
+
+function mapFunctionsError(error: any): Error {
+  const code = error?.code as string | undefined;
+  const msg = error?.message as string | undefined;
+
+  const nice =
+    code === 'functions/invalid-argument' ? 'Invalid data sent to server.'
+    : code === 'functions/permission-denied' ? 'You do not have permission to perform this action.'
+    : code === 'functions/not-found' ? 'Resource not found.'
+    : code === 'functions/deadline-exceeded' ? 'The server took too long to respond.'
+    : code === 'functions/resource-exhausted' ? 'Server rate limit exceeded. Please retry shortly.'
+    : code === 'functions/unavailable' ? 'Service temporarily unavailable. Check your connection and retry.'
+    : msg || 'An unexpected error occurred.';
+
+  return new Error(nice);
+}
+
+async function callFn<TReq, TRsp>(name: string, payload: TReq): Promise<TRsp> {
+  logger.api.request(name, 'callable');
+  const fn = httpsCallable<TReq, TRsp>(functions, name);
+  const started = performance.now();
+
+  try {
+    const res = await withTimeout(fn(payload), CALLABLE_TIMEOUT_MS, name);
+    logger.api.response(name, 200, performance.now() - started);
+    return res.data;
+  } catch (err: any) {
+    logger.api.error(name, err);
+    throw mapFunctionsError(err);
+  }
+}
+
+/** ---- Contracts from Functions ------------------------------------------- */
 
 export interface GenerateWorkoutResponse {
   success: boolean;
@@ -1523,140 +1765,147 @@ export interface GenerateWorkoutResponse {
 }
 
 export interface GetExercisesRequest {
-  equipment?: string[];
+  equipment?: Equipment[];
   targetMuscles?: string[];
-  difficulty?: string;
-  category?: string;
+  difficulty?: FitnessLevel;
+  /** Optional category/kind of exercise (maps to your WorkoutType) */
+  category?: WorkoutType;
   limit?: number;
+  /** Optional free-text query */
+  search?: string;
 }
 
 export interface GetExercisesResponse {
   exercises: (Exercise & { id: string })[];
 }
 
+export interface CompleteWorkoutSessionRequest {
+  sessionId: string;
+  completedExercises: CompletedExercise[];
+  rating?: number;
+  feedback?: string;
+}
+
+export interface CompleteWorkoutSessionResponse {
+  success: boolean;
+}
+
+export interface GetWorkoutHistoryRequest {
+  userId: string;
+  limit?: number;
+}
+
+export interface GetWorkoutHistoryResponse {
+  sessions: WorkoutSession[];
+}
+
+/** ---- Service ------------------------------------------------------------- */
+
 export class WorkoutService {
-  // Generate AI-powered workout
-  static async generateWorkout(request: WorkoutGenerationRequest): Promise<WorkoutPlan & { id: string }> {
-    try {
-      const generateWorkoutFn = httpsCallable<WorkoutGenerationRequest, GenerateWorkoutResponse>(
-        functions, 
-        'generateWorkout'
-      );
-      
-      const result = await generateWorkoutFn(request);
-      
-      if (!result.data.success) {
-        throw new Error('Failed to generate workout');
-      }
-      
-      return result.data.workoutPlan;
-    } catch (error: any) {
-      const { logger } = await import('../utils/logger');
-      logger.workout.error('Workout generation failed', error as Error);
-      throw new Error(error.message || 'Failed to generate workout');
+  /** Generate an AI-powered workout */
+  static async generateWorkout(
+    request: WorkoutGenerationRequest,
+  ): Promise<WorkoutPlan & { id: string }> {
+    const data = await callFn<WorkoutGenerationRequest, GenerateWorkoutResponse>(
+      'generateWorkout',
+      request
+    );
+
+    if (!data?.success || !data.workoutPlan) {
+      throw new Error('Failed to generate workout');
     }
+    logger.workout.generated(request.userId, data.workoutPlan.id);
+    return data.workoutPlan;
   }
 
-  // Get exercises by filters
+  /** Get exercises by filters */
   static async getExercises(request: GetExercisesRequest = {}): Promise<(Exercise & { id: string })[]> {
-    try {
-      const getExercisesFn = httpsCallable<GetExercisesRequest, GetExercisesResponse>(
-        functions, 
-        'getExercises'
-      );
-      
-      const result = await getExercisesFn(request);
-      return result.data.exercises;
-    } catch (error: any) {
-      console.error('Error fetching exercises:', error);
-      throw new Error(error.message || 'Failed to fetch exercises');
-    }
+    const data = await callFn<GetExercisesRequest, GetExercisesResponse>('getExercises', request);
+    return data.exercises ?? [];
   }
 
-  // Initialize exercise database (admin function)
+  /** Initialize exercise database (admin) */
   static async initializeExercises(): Promise<void> {
-    try {
-      const initializeExercisesFn = httpsCallable(functions, 'initializeExercises');
-      await initializeExercisesFn();
-    } catch (error: any) {
-      console.error('Error initializing exercises:', error);
-      throw new Error(error.message || 'Failed to initialize exercises');
-    }
+    // Send {} to satisfy callable signature even if no args are used.
+    await callFn<Record<string, never>, unknown>('initializeExercises', {});
   }
 
-  // Start a workout session
+  /** Start a workout session (local-only construction; persistence handled elsewhere) */
   static async startWorkoutSession(workoutPlanId: string): Promise<WorkoutSession> {
     const session: WorkoutSession = {
       id: `session_${Date.now()}`,
-      userId: '', // Will be set by the calling component
+      userId: '', // set by caller (e.g., component with auth context)
       workoutPlanId,
-      workoutPlan: {} as WorkoutPlan, // Will be populated
+      workoutPlan: {} as WorkoutPlan, // populate upstream
       startTime: new Date(),
       completedExercises: [],
       status: 'in_progress',
     };
-
     return session;
   }
 
-  // Complete a workout session
+  /** Complete a workout session (persists via function if available) */
   static async completeWorkoutSession(
     sessionId: string,
-    _completedExercises: any[],
-    _rating?: number,
-    _feedback?: string
+    completedExercises: CompletedExercise[],
+    rating?: number,
+    feedback?: string,
   ): Promise<void> {
-    const { logger } = await import('../utils/logger');
-    logger.workout.completed('current_user', sessionId);
-  }
-
-  // Get workout history
-  static async getWorkoutHistory(_userId: string, _limit: number = 10): Promise<WorkoutSession[]> {
-    // This would fetch workout sessions from Firestore
-    // For now, return empty array
-    return [];
-  }
-
-  // Generate adaptive workout based on previous performance
-  static async generateAdaptiveWorkout(request: AdaptiveWorkoutRequest): Promise<AdaptiveWorkoutResponse> {
     try {
-      const generateAdaptiveWorkoutFn = httpsCallable<AdaptiveWorkoutRequest, AdaptiveWorkoutResponse>(
-        functions,
-        'generateAdaptiveWorkout'
+      await callFn<CompleteWorkoutSessionRequest, CompleteWorkoutSessionResponse>(
+        'completeWorkoutSession',
+        { sessionId, completedExercises, rating, feedback }
       );
-
-      const result = await generateAdaptiveWorkoutFn(request);
-
-      if (!result.data.success) {
-        throw new Error('Failed to generate adaptive workout');
-      }
-
-      return result.data;
-    } catch (error: any) {
-      console.error('Error generating adaptive workout:', error);
-      throw new Error(error.message || 'Failed to generate adaptive workout');
+      logger.workout.completed('current_user', sessionId);
+    } catch (err) {
+      // If a cloud function isn't deployed yet, keep UX flowing and surface a friendly message upstream.
+      logger.workout.error('completeWorkoutSession failed', err as Error);
+      throw err instanceof Error ? err : new Error('Failed to save workout session');
     }
   }
 
-
-
-  // Analyze workout trends and progress
-  static async getWorkoutAnalytics(userId: string, timeframe: 'week' | 'month' | 'quarter' = 'month'): Promise<any> {
+  /** Get workout history (server-backed); falls back to [] on error */
+  static async getWorkoutHistory(userId: string, limit = 10): Promise<WorkoutSession[]> {
     try {
-      const getAnalyticsFn = httpsCallable<{ userId: string; timeframe: string }, any>(
-        functions,
-        'getWorkoutAnalytics'
+      const data = await callFn<GetWorkoutHistoryRequest, GetWorkoutHistoryResponse>(
+        'getWorkoutHistory',
+        { userId, limit }
       );
-
-      const result = await getAnalyticsFn({ userId, timeframe });
-      return result.data;
-    } catch (error: any) {
-      console.error('Error getting workout analytics:', error);
-      throw new Error(error.message || 'Failed to get workout analytics');
+      return data.sessions ?? [];
+    } catch (err) {
+      // Keep the existing page functional if the function isn’t available yet
+      logger.workout.error('getWorkoutHistory failed', err as Error);
+      return [];
     }
+  }
+
+  /** Generate adaptive workout based on previous performance */
+  static async generateAdaptiveWorkout(
+    request: AdaptiveWorkoutRequest
+  ): Promise<AdaptiveWorkoutResponse> {
+    const data = await callFn<AdaptiveWorkoutRequest, AdaptiveWorkoutResponse>(
+      'generateAdaptiveWorkout',
+      request
+    );
+
+    if (!data?.success) {
+      throw new Error('Failed to generate adaptive workout');
+    }
+    return data;
+  }
+
+  /** Analyze workout trends and progress */
+  static async getWorkoutAnalytics(
+    userId: string,
+    timeframe: 'week' | 'month' | 'quarter' = 'month'
+  ): Promise<any> {
+    const data = await callFn<{ userId: string; timeframe: string }, any>(
+      'getWorkoutAnalytics',
+      { userId, timeframe }
+    );
+    return data;
   }
 }
-
 ```
 
 ---
@@ -1668,90 +1917,119 @@ export class WorkoutService {
 ```typescript
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../lib/firebase';
-import type { UserProfile } from '../types';
+import type {
+  UserProfile,
+  FitnessLevel,
+  FitnessGoal,
+  Equipment,
+  TimeCommitment,
+  UserPreferences,
+} from '../types';
+import { logger } from '../utils/logger';
+
+/** ---- Shared helpers ------------------------------------------------------ */
+
+const CALLABLE_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(p: Promise<T>, ms = CALLABLE_TIMEOUT_MS, label = 'request'): Promise<T> {
+  let id: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    id = window.setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+  return Promise.race([p, timeout]).finally(() => clearTimeout(id));
+}
+
+function mapFunctionsError(error: any): Error {
+  const code = error?.code as string | undefined; // e.g. "functions/invalid-argument"
+  const msg = error?.message as string | undefined;
+
+  const nice =
+    code === 'functions/invalid-argument' ? 'Invalid data sent to server.'
+    : code === 'functions/permission-denied' ? 'You do not have permission to perform this action.'
+    : code === 'functions/not-found' ? 'Resource not found.'
+    : code === 'functions/deadline-exceeded' ? 'The server took too long to respond.'
+    : code === 'functions/resource-exhausted' ? 'Server rate limit exceeded. Please retry shortly.'
+    : code === 'functions/unavailable' ? 'Service temporarily unavailable. Check your connection and retry.'
+    : msg || 'An unexpected error occurred.';
+
+  return new Error(nice);
+}
+
+async function callFn<TReq, TRsp>(name: string, payload: TReq): Promise<TRsp> {
+  logger.api.request(name, 'callable');
+  const fn = httpsCallable<TReq, TRsp>(functions, name);
+  const started = performance.now();
+
+  try {
+    const res = await withTimeout(fn(payload), CALLABLE_TIMEOUT_MS, name);
+    logger.api.response(name, 200, performance.now() - started);
+    return res.data;
+  } catch (err: any) {
+    logger.api.error(name, err);
+    throw mapFunctionsError(err);
+  }
+}
+
+/** ---- Request/response contracts ----------------------------------------- */
 
 export interface CreateUserProfileRequest {
-  fitnessLevel: "beginner" | "intermediate" | "advanced";
-  fitnessGoals: string[];
-  availableEquipment: string[];
-  timeCommitment: {
-    daysPerWeek: number;
-    minutesPerSession: number;
-    preferredTimes: string[];
-  };
-  preferences: {
-    workoutTypes: string[];
-    intensity: "low" | "moderate" | "high";
-    restDayPreference: number;
-    injuriesOrLimitations: string[];
-  };
+  fitnessLevel: FitnessLevel;
+  fitnessGoals: FitnessGoal[];
+  availableEquipment: Equipment[];
+  timeCommitment: TimeCommitment;
+  preferences: UserPreferences;
 }
 
 export interface UserProfileResponse {
   success: boolean;
-  message: string;
+  message?: string;
 }
 
 export interface GetUserProfileResponse {
   profile: UserProfile | null;
 }
 
+/** ---- Service ------------------------------------------------------------- */
+
 export class UserProfileService {
-  // Create or update user profile
+  /**
+   * Create (or overwrite) the signed-in user's profile.
+   * The server derives the UID from auth context; no need to pass it.
+   */
   static async createUserProfile(profileData: CreateUserProfileRequest): Promise<void> {
-    try {
-      const createUserProfileFn = httpsCallable<CreateUserProfileRequest, UserProfileResponse>(
-        functions, 
-        'createUserProfile'
-      );
-      
-      const result = await createUserProfileFn(profileData);
-      
-      if (!result.data.success) {
-        throw new Error(result.data.message || 'Failed to create user profile');
-      }
-    } catch (error: any) {
-      console.error('Error creating user profile:', error);
-      throw new Error(error.message || 'Failed to create user profile');
+    const data = await callFn<CreateUserProfileRequest, UserProfileResponse>(
+      'createUserProfile',
+      profileData
+    );
+
+    if (!data?.success) {
+      throw new Error(data?.message || 'Failed to create user profile');
     }
   }
 
-  // Get user profile
+  /**
+   * Get the signed-in user's profile.
+   */
   static async getUserProfile(): Promise<UserProfile | null> {
-    try {
-      const getUserProfileFn = httpsCallable<void, GetUserProfileResponse>(
-        functions, 
-        'getUserProfile'
-      );
-      
-      const result = await getUserProfileFn();
-      return result.data.profile;
-    } catch (error: any) {
-      console.error('Error fetching user profile:', error);
-      throw new Error(error.message || 'Failed to fetch user profile');
-    }
+    // Prefer sending an empty object to avoid TS friction on "no-arg" callables
+    const data = await callFn<Record<string, never>, GetUserProfileResponse>('getUserProfile', {});
+    return data.profile ?? null;
   }
 
-  // Update user profile
+  /**
+   * Partially update the signed-in user's profile.
+   */
   static async updateUserProfile(updates: Partial<CreateUserProfileRequest>): Promise<void> {
-    try {
-      const updateUserProfileFn = httpsCallable<Partial<CreateUserProfileRequest>, UserProfileResponse>(
-        functions, 
-        'updateUserProfile'
-      );
-      
-      const result = await updateUserProfileFn(updates);
-      
-      if (!result.data.success) {
-        throw new Error(result.data.message || 'Failed to update user profile');
-      }
-    } catch (error: any) {
-      console.error('Error updating user profile:', error);
-      throw new Error(error.message || 'Failed to update user profile');
+    const data = await callFn<Partial<CreateUserProfileRequest>, UserProfileResponse>(
+      'updateUserProfile',
+      updates
+    );
+
+    if (!data?.success) {
+      throw new Error(data?.message || 'Failed to update user profile');
     }
   }
 }
-
 ```
 
 ---
@@ -1958,7 +2236,6 @@ export const logger = new SimpleLogger();
 ```typescript
 // src/pages/DashboardPage.tsx
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { SparklesIcon } from '@heroicons/react/24/outline';
 
@@ -1975,13 +2252,10 @@ import { UserProfileService } from '../services/userProfileService';
 /* --------------------------------- Page --------------------------------- */
 
 export const DashboardPage: React.FC = () => {
-  const navigate = useNavigate();
   const reduceMotion = useReducedMotion();
-
-  const { user, profile, setProfile } = useAuthStore();
+  const { user, profile, loading, setProfile, setLoading } = useAuthStore();
 
   const [showWorkoutModal, setShowWorkoutModal] = useState(false);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     document.title = 'Dashboard • NeuraFit';
@@ -1989,7 +2263,10 @@ export const DashboardPage: React.FC = () => {
 
   useEffect(() => {
     const loadUserProfile = async () => {
+      if (!user) return;
+      
       try {
+        setLoading(true);
         const userProfile = await UserProfileService.getUserProfile();
         setProfile(userProfile);
       } catch (error) {
@@ -1999,12 +2276,12 @@ export const DashboardPage: React.FC = () => {
       }
     };
 
-    if (user && !profile) loadUserProfile();
-    else setLoading(false);
-  }, [user, profile, setProfile]);
-
-
-
+    if (user && !profile) {
+      loadUserProfile();
+    } else if (user && profile) {
+      setLoading(false);
+    }
+  }, [user, profile, setProfile, setLoading]);
 
   /* --------------------------------- Load --------------------------------- */
 
@@ -2014,7 +2291,9 @@ export const DashboardPage: React.FC = () => {
         <div className="flex min-h-[400px] items-center justify-center">
           <div className="text-center">
             <LoadingSpinner size="lg" className="mx-auto mb-4" />
-            <h3 className="mb-2 text-lg font-medium text-neutral-900">Loading your dashboard</h3>
+            <h3 className="mb-2 text-lg font-medium text-neutral-900">
+              Loading your dashboard
+            </h3>
             <p className="text-neutral-600">Getting your fitness data ready…</p>
           </div>
         </div>
@@ -2036,7 +2315,7 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
       )}
-
+      
       <PageContainer>
         {/* Header */}
         <motion.div
@@ -2052,10 +2331,6 @@ export const DashboardPage: React.FC = () => {
             <p className="text-xl font-light text-neutral-600">Ready to crush your fitness goals today?</p>
           </div>
         </motion.div>
-
-
-
-
 
         {/* Generate AI Workout - Main CTA */}
         <motion.div
@@ -2093,17 +2368,17 @@ export const DashboardPage: React.FC = () => {
                   Get a personalized workout tailored to your goals, preferences, and fitness level
                 </p>
                 <div className="flex justify-center">
-                  <Button
-                    variant="glass"
-                    size="xl"
-                    icon={<SparklesIcon />}
+                  <Button 
+                    variant="glass" 
+                    size="xl" 
+                    icon={<SparklesIcon />} 
                     className="transition-transform duration-300 group-hover:scale-105 px-8 py-4 text-lg font-semibold"
                   >
                     Create Your Workout
                   </Button>
                 </div>
               </div>
-
+              
               {/* Subtle ambient shapes */}
               {!reduceMotion && (
                 <div className="absolute inset-0 opacity-20" aria-hidden>
@@ -2122,12 +2397,6 @@ export const DashboardPage: React.FC = () => {
             </GradientCard>
           </div>
         </motion.div>
-
-
-
-
-
-
       </PageContainer>
 
       {/* Workout Generation Modal */}
@@ -2135,6 +2404,7 @@ export const DashboardPage: React.FC = () => {
     </>
   );
 };
+
 ```
 
 ---
@@ -2629,22 +2899,651 @@ export const HistoryPage: React.FC = () => {
 **Description:** User profile management page
 
 ```typescript
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import { Badge } from '../components/ui/Badge';
+import { LoadingSpinner } from '../components/ui/LoadingSpinner';
+
+import { useAuthStore } from '../store/authStore';
+import { UserProfileService } from '../services/userProfileService';
+import { AuthService } from '../services/authService';
+
+import type {
+  Equipment,
+  FitnessGoal,
+  FitnessLevel,
+  UserProfile,
+  WorkoutType,
+} from '../types';
+
+/* --------------------------------- Options --------------------------------- */
+
+const fitnessLevels: { value: FitnessLevel; label: string }[] = [
+  { value: 'beginner', label: 'Beginner' },
+  { value: 'intermediate', label: 'Intermediate' },
+  { value: 'advanced', label: 'Advanced' },
+];
+
+const fitnessGoals: { value: FitnessGoal; label: string }[] = [
+  { value: 'lose_weight', label: 'Lose Weight' },
+  { value: 'build_muscle', label: 'Build Muscle' },
+  { value: 'improve_cardio', label: 'Improve Cardio' },
+  { value: 'improve_flexibility', label: 'Improve Flexibility' },
+  { value: 'general_fitness', label: 'General Fitness' },
+  { value: 'sport_specific', label: 'Sport Specific' },
+];
+
+const equipmentOptions: { value: Equipment; label: string }[] = [
+  { value: 'bodyweight', label: 'Bodyweight' },
+  { value: 'dumbbells', label: 'Dumbbells' },
+  { value: 'barbell', label: 'Barbell' },
+  { value: 'kettlebells', label: 'Kettlebells' },
+  { value: 'resistance_bands', label: 'Resistance Bands' },
+  { value: 'pull_up_bar', label: 'Pull-up bar' },
+  { value: 'yoga_mat', label: 'Yoga Mat' },
+  { value: 'cardio_machine', label: 'Cardio Machine' },
+  { value: 'gym_access', label: 'Gym Access' },
+];
+
+const workoutTypes: { value: WorkoutType; label: string }[] = [
+  { value: 'strength_training', label: 'Strength Training' },
+  { value: 'cardio', label: 'Cardio' },
+  { value: 'hiit', label: 'HIIT' },
+  { value: 'yoga', label: 'Yoga' },
+  { value: 'pilates', label: 'Pilates' },
+  { value: 'stretching', label: 'Stretching' },
+  { value: 'functional', label: 'Functional' },
+  { value: 'circuit', label: 'Circuit' },
+];
+
+const preferredTimeOptions = ['Morning', 'Afternoon', 'Evening'] as const;
+type PreferredTime = (typeof preferredTimeOptions)[number];
+
+type Intensity = 'low' | 'moderate' | 'high';
+
+/* --------------------------------- Helpers --------------------------------- */
+
+const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
+const toggleInArray = <T,>(arr: T[], value: T) =>
+  arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value];
+
+const sameArray = <T,>(a: T[], b: T[]) =>
+  a.length === b.length && [...a].sort().every((v, i) => v === [...b].sort()[i]);
+
+/** Quick chip control (keyboard accessible) */
+const Chip: React.FC<{
+  selected?: boolean;
+  onClick?: () => void;
+  children: React.ReactNode;
+  ariaLabel?: string;
+}> = ({ selected, onClick, children, ariaLabel }) => (
+  <button
+    type="button"
+    aria-pressed={!!selected}
+    aria-label={ariaLabel}
+    onClick={onClick}
+    className={[
+      'inline-flex items-center rounded-full px-3 py-1.5 text-sm font-medium transition border',
+      selected
+        ? 'bg-primary-600 text-white border-primary-600 shadow-sm hover:bg-primary-700'
+        : 'bg-neutral-100 text-neutral-800 border-neutral-200 hover:bg-neutral-200',
+    ].join(' ')}
+  >
+    {children}
+  </button>
+);
+
+/* --------------------------------- Types ---------------------------------- */
+
+type FormState = {
+  displayName: string;
+  fitnessLevel: FitnessLevel | null;
+  fitnessGoals: FitnessGoal[];
+  availableEquipment: Equipment[];
+  timeCommitment: {
+    daysPerWeek: number;
+    minutesPerSession: number;
+    preferredTimes: PreferredTime[];
+  };
+  preferences: {
+    workoutTypes: WorkoutType[];
+    intensity: Intensity;
+    restDayPreference: number; // 0..6 (Sun..Sat)
+    injuriesOrLimitations: string[];
+  };
+};
+
+/* --------------------------------- Page ----------------------------------- */
 
 export const ProfilePage: React.FC = () => {
+  const navigate = useNavigate();
+  const { user, profile, setProfile } = useAuthStore();
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const initialForm: FormState = useMemo(
+    () => ({
+      displayName: user?.displayName || '',
+      fitnessLevel: profile?.fitnessLevel ?? null,
+      fitnessGoals: profile?.fitnessGoals ?? [],
+      availableEquipment: profile?.availableEquipment ?? ['bodyweight'],
+      timeCommitment: {
+        daysPerWeek: profile?.timeCommitment?.daysPerWeek ?? 3,
+        minutesPerSession: profile?.timeCommitment?.minutesPerSession ?? 30,
+        preferredTimes:
+          (profile?.timeCommitment?.preferredTimes as PreferredTime[] | undefined) ??
+          ['Morning'],
+      },
+      preferences: {
+        workoutTypes: profile?.preferences?.workoutTypes ?? ['strength_training'],
+        intensity: (profile?.preferences?.intensity as Intensity) ?? 'moderate',
+        restDayPreference: profile?.preferences?.restDayPreference ?? 1,
+        injuriesOrLimitations: profile?.preferences?.injuriesOrLimitations ?? [],
+      },
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [user?.displayName, profile?.updatedAt?.toString()]
+  );
+
+  const [form, setForm] = useState<FormState>(initialForm);
+
+  // Load or hydrate on mount
+  useEffect(() => {
+    document.title = 'Profile • NeuraFit';
+  }, []);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        // If store doesn't have profile, fetch it
+        if (!profile) {
+          const p = await UserProfileService.getUserProfile();
+          if (p) {
+            setProfile(p);
+          }
+        }
+      } catch (e: any) {
+        setError(e?.message || 'Failed to load profile');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Rehydrate form when store profile changes
+  useEffect(() => {
+    setForm({
+      displayName: user?.displayName || '',
+      fitnessLevel: profile?.fitnessLevel ?? null,
+      fitnessGoals: profile?.fitnessGoals ?? [],
+      availableEquipment: profile?.availableEquipment ?? ['bodyweight'],
+      timeCommitment: {
+        daysPerWeek: profile?.timeCommitment?.daysPerWeek ?? 3,
+        minutesPerSession: profile?.timeCommitment?.minutesPerSession ?? 30,
+        preferredTimes:
+          (profile?.timeCommitment?.preferredTimes as PreferredTime[] | undefined) ??
+          ['Morning'],
+      },
+      preferences: {
+        workoutTypes: profile?.preferences?.workoutTypes ?? ['strength_training'],
+        intensity: (profile?.preferences?.intensity as Intensity) ?? 'moderate',
+        restDayPreference: profile?.preferences?.restDayPreference ?? 1,
+        injuriesOrLimitations: profile?.preferences?.injuriesOrLimitations ?? [],
+      },
+    });
+  }, [profile, user?.displayName]);
+
+  const hasChanges = useMemo(() => {
+    if (!profile) return true;
+    const sameDisplay = (form.displayName || '') === (user?.displayName || '');
+    const same =
+      form.fitnessLevel === profile.fitnessLevel &&
+      sameArray(form.fitnessGoals, profile.fitnessGoals) &&
+      sameArray(form.availableEquipment, profile.availableEquipment) &&
+      form.timeCommitment.daysPerWeek === profile.timeCommitment.daysPerWeek &&
+      form.timeCommitment.minutesPerSession === profile.timeCommitment.minutesPerSession &&
+      sameArray(form.timeCommitment.preferredTimes, profile.timeCommitment.preferredTimes as PreferredTime[]) &&
+      (form.preferences.intensity === profile.preferences.intensity) &&
+      form.preferences.restDayPreference === profile.preferences.restDayPreference &&
+      sameArray(form.preferences.injuriesOrLimitations, profile.preferences.injuriesOrLimitations) &&
+      sameArray(form.preferences.workoutTypes, profile.preferences.workoutTypes);
+    return !(same && sameDisplay);
+  }, [form, profile, user?.displayName]);
+
+  const onSave = async () => {
+    setSaving(true);
+    setError(null);
+    setStatus(null);
+
+    try {
+      // Update Firebase Auth displayName if changed
+      if (form.displayName && form.displayName !== (user?.displayName || '')) {
+        const { auth } = await import('../lib/firebase');
+        const { updateProfile } = await import('firebase/auth');
+        if (auth.currentUser) {
+          await updateProfile(auth.currentUser, { displayName: form.displayName });
+        }
+      }
+
+      // Update profile in backend
+      await UserProfileService.updateUserProfile({
+        fitnessLevel: form.fitnessLevel ?? 'beginner',
+        fitnessGoals: form.fitnessGoals,
+        availableEquipment: form.availableEquipment,
+        timeCommitment: {
+          daysPerWeek: clamp(form.timeCommitment.daysPerWeek, 1, 7),
+          minutesPerSession: clamp(form.timeCommitment.minutesPerSession, 10, 180),
+          preferredTimes: form.timeCommitment.preferredTimes,
+        },
+        preferences: {
+          workoutTypes: form.preferences.workoutTypes,
+          intensity: form.preferences.intensity,
+          restDayPreference: clamp(form.preferences.restDayPreference, 0, 6),
+          injuriesOrLimitations: form.preferences.injuriesOrLimitations,
+        },
+      });
+
+      // Refresh store with latest profile
+      const refreshed = await UserProfileService.getUserProfile();
+      if (refreshed) setProfile(refreshed);
+
+      setStatus('Profile updated successfully.');
+    } catch (e: any) {
+      setError(e?.message || 'Failed to save changes');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const onResetPassword = async () => {
+    if (!user?.email) return setError('No email found for this account.');
+    setSaving(true);
+    setStatus(null);
+    setError(null);
+    try {
+      await AuthService.resetPassword(user.email);
+      setStatus(`Password reset email sent to ${user.email}.`);
+    } catch (e: any) {
+      setError(e?.message || 'Could not send password reset email.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const onSignOut = async () => {
+    try {
+      await AuthService.signOut();
+      navigate('/');
+    } catch (e: any) {
+      setError(e?.message || 'Failed to sign out.');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="flex items-center justify-center">
+          <div className="text-center">
+            <LoadingSpinner size="lg" className="mx-auto mb-4" />
+            <p className="text-neutral-700">Loading your profile…</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="card p-8 text-center">
+          <h1 className="text-2xl font-bold text-neutral-900 mb-2">Complete your profile</h1>
+          <p className="text-neutral-600 mb-6">
+            We couldn’t find your fitness profile. Complete onboarding to personalize your training.
+          </p>
+          <Link to="/onboarding">
+            <Button variant="energy" size="lg">Start Onboarding</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Profile</h1>
-        <p className="text-gray-600 mt-2">Manage your account and preferences</p>
+      {/* Header */}
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Profile</h1>
+          <p className="text-gray-600 mt-2">Manage your account and preferences</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={onResetPassword} disabled={saving}>
+            Reset Password
+          </Button>
+          <Button variant="error" onClick={onSignOut} disabled={saving}>
+            Sign Out
+          </Button>
+        </div>
       </div>
-      <div className="card">
-        <p className="text-center text-gray-600">Profile management coming soon...</p>
+
+      {/* Status + Errors */}
+      {(status || error) && (
+        <div
+          className={[
+            'mb-6 rounded-lg border px-4 py-3',
+            status ? 'bg-green-50 border-green-200 text-green-700' : 'bg-rose-50 border-rose-200 text-rose-700',
+          ].join(' ')}
+          role="status"
+          aria-live="polite"
+        >
+          {status ?? error}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Account card */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          className="card lg:col-span-1"
+        >
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4">Account</h2>
+
+          <div className="flex items-center gap-4 mb-6">
+            <div className="h-16 w-16 rounded-full bg-gradient-energy text-white grid place-items-center font-bold text-xl">
+              {(form.displayName || user?.email || 'U').slice(0, 1).toUpperCase()}
+            </div>
+            <div>
+              <p className="font-semibold text-neutral-900">{form.displayName || '—'}</p>
+              <p className="text-sm text-neutral-600">{user?.email ?? 'No email'}</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <Input
+              label="Display name"
+              name="displayName"
+              type="text"
+              value={form.displayName}
+              onChange={(e) => setForm((f) => ({ ...f, displayName: e.target.value }))}
+              placeholder="Your name"
+            />
+
+            <div className="pt-2">
+              <p className="text-sm font-medium text-neutral-700 mb-2">Fitness level</p>
+              <div className="flex flex-wrap gap-2">
+                {fitnessLevels.map((lvl) => (
+                  <Chip
+                    key={lvl.value}
+                    selected={form.fitnessLevel === lvl.value}
+                    onClick={() => setForm((f) => ({ ...f, fitnessLevel: lvl.value }))}
+                    ariaLabel={`Fitness level ${lvl.label}`}
+                  >
+                    {lvl.label}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Goals & Equipment */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.05 }}
+          className="card lg:col-span-2"
+        >
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4">Goals & Equipment</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Goals */}
+            <div>
+              <p className="text-sm font-medium text-neutral-700 mb-2">Primary goals</p>
+              <div className="flex flex-wrap gap-2">
+                {fitnessGoals.map((g) => (
+                  <Chip
+                    key={g.value}
+                    selected={form.fitnessGoals.includes(g.value)}
+                    onClick={() =>
+                      setForm((f) => ({
+                        ...f,
+                        fitnessGoals: toggleInArray(f.fitnessGoals, g.value),
+                      }))
+                    }
+                    ariaLabel={`Toggle goal ${g.label}`}
+                  >
+                    {g.label}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+
+            {/* Equipment */}
+            <div>
+              <p className="text-sm font-medium text-neutral-700 mb-2">Available equipment</p>
+              <div className="flex flex-wrap gap-2">
+                {equipmentOptions.map((eq) => (
+                  <Chip
+                    key={eq.value}
+                    selected={form.availableEquipment.includes(eq.value)}
+                    onClick={() =>
+                      setForm((f) => ({
+                        ...f,
+                        availableEquipment: toggleInArray(f.availableEquipment, eq.value),
+                      }))
+                    }
+                    ariaLabel={`Toggle equipment ${eq.label}`}
+                  >
+                    {eq.label}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Time & Preferences */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.1 }}
+          className="card lg:col-span-2"
+        >
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4">Schedule & Preferences</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <Input
+                label="Days per week"
+                name="daysPerWeek"
+                type="number"
+                min={1}
+                max={7}
+                value={form.timeCommitment.daysPerWeek}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    timeCommitment: {
+                      ...f.timeCommitment,
+                      daysPerWeek: clamp(Number(e.target.value || 0), 1, 7),
+                    },
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <Input
+                label="Minutes per session"
+                name="minutesPerSession"
+                type="number"
+                min={10}
+                max={180}
+                value={form.timeCommitment.minutesPerSession}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    timeCommitment: {
+                      ...f.timeCommitment,
+                      minutesPerSession: clamp(Number(e.target.value || 0), 10, 180),
+                    },
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-neutral-700 mb-2">Preferred time of day</p>
+              <div className="flex flex-wrap gap-2">
+                {preferredTimeOptions.map((t) => (
+                  <Chip
+                    key={t}
+                    selected={form.timeCommitment.preferredTimes.includes(t)}
+                    onClick={() =>
+                      setForm((f) => ({
+                        ...f,
+                        timeCommitment: {
+                          ...f.timeCommitment,
+                          preferredTimes: toggleInArray(f.timeCommitment.preferredTimes, t),
+                        },
+                      }))
+                    }
+                    ariaLabel={`Toggle time ${t}`}
+                  >
+                    {t}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Workout types */}
+            <div>
+              <p className="text-sm font-medium text-neutral-700 mb-2">Preferred workout types</p>
+              <div className="flex flex-wrap gap-2">
+                {workoutTypes.map((wt) => (
+                  <Chip
+                    key={wt.value}
+                    selected={form.preferences.workoutTypes.includes(wt.value)}
+                    onClick={() =>
+                      setForm((f) => ({
+                        ...f,
+                        preferences: {
+                          ...f.preferences,
+                          workoutTypes: toggleInArray(f.preferences.workoutTypes, wt.value),
+                        },
+                      }))
+                    }
+                    ariaLabel={`Toggle ${wt.label}`}
+                  >
+                    {wt.label}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+
+            {/* Intensity */}
+            <div>
+              <p className="text-sm font-medium text-neutral-700 mb-2">Typical intensity</p>
+              <div className="flex flex-wrap gap-2">
+                {(['low', 'moderate', 'high'] as Intensity[]).map((lvl) => (
+                  <Chip
+                    key={lvl}
+                    selected={form.preferences.intensity === lvl}
+                    onClick={() =>
+                      setForm((f) => ({ ...f, preferences: { ...f.preferences, intensity: lvl } }))
+                    }
+                    ariaLabel={`Set intensity ${lvl}`}
+                  >
+                    {lvl[0].toUpperCase() + lvl.slice(1)}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Injuries / Limitations */}
+          <div className="mt-6">
+            <p className="text-sm font-medium text-neutral-700 mb-2">Injuries or limitations</p>
+            <div className="bg-white border border-neutral-200 rounded-xl p-3">
+              <textarea
+                className="w-full resize-y min-h-[88px] outline-none"
+                placeholder="List any injuries or movement restrictions (e.g., left shoulder impingement)"
+                value={form.preferences.injuriesOrLimitations.join('\n')}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    preferences: {
+                      ...f.preferences,
+                      injuriesOrLimitations: e.target.value
+                        .split('\n')
+                        .map((s) => s.trim())
+                        .filter(Boolean),
+                    },
+                  }))
+                }
+              />
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {form.preferences.injuriesOrLimitations.map((tag, i) => (
+                <Badge key={`${tag}-${i}`} variant="secondary" size="sm" className="truncate max-w-[200px]">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          {/* Save */}
+          <div className="mt-8 flex items-center gap-3">
+            <Button
+              onClick={onSave}
+              disabled={!hasChanges || saving || !form.fitnessLevel}
+              loading={saving}
+              size="lg"
+              className="px-8"
+            >
+              Save changes
+            </Button>
+            {!form.fitnessLevel && (
+              <span className="text-sm text-rose-600">Select your fitness level to save.</span>
+            )}
+            {!hasChanges && (
+              <span className="text-sm text-neutral-500">No changes to save.</span>
+            )}
+          </div>
+        </motion.div>
+
+        {/* Tips / Info */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.15 }}
+          className="card lg:col-span-1"
+        >
+          <h2 className="text-lg font-semibold text-neutral-900 mb-3">Quick tips</h2>
+          <ul className="space-y-2 text-sm text-neutral-700">
+            <li>• Keep “Injuries or limitations” up to date so workouts adapt safely.</li>
+            <li>• Minutes/session drives workout block sizing and pacing.</li>
+            <li>• Goals + equipment shape your AI workout recommendations.</li>
+          </ul>
+          <div className="mt-4">
+            <Badge variant="gradient" animate>AI‑Powered</Badge>
+          </div>
+        </motion.div>
       </div>
     </div>
   );
 };
-
 ```
 
 ---
@@ -6332,7 +7231,7 @@ export const FocusTrap: React.FC<FocusTrapProps> = ({ children, active }) => {
 
 ```typescript
 // src/components/workout/WorkoutGenerationModal.tsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useId } from 'react';
 import { Dialog } from '@headlessui/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -6341,6 +7240,10 @@ import {
   ClockIcon,
   FireIcon,
   WrenchScrewdriverIcon,
+  ArrowPathIcon,
+  AdjustmentsHorizontalIcon,
+  ClipboardIcon,
+  CheckIcon,
 } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import { fadeUp } from '../../utils/animations';
@@ -6353,7 +7256,12 @@ import { WorkoutService } from '../../services/workoutService';
 import { useWorkoutStore } from '../../store/workoutStore';
 import { useAuthStore } from '../../store/authStore';
 
-import type { UserProfile, WorkoutType, WorkoutGenerationRequest, Equipment } from '../../types';
+import type {
+  UserProfile,
+  WorkoutType,
+  WorkoutGenerationRequest,
+  Equipment,
+} from '../../types';
 
 /* ----------------------------- Constants / UI ---------------------------- */
 
@@ -6384,6 +7292,8 @@ const focusOptions = [
 
 const durationPresets = [10, 20, 30, 45];
 
+const LOCAL_STORAGE_KEY = 'workoutGen:last';
+
 /** Simple chip button */
 const Chip: React.FC<{
   selected?: boolean;
@@ -6391,14 +7301,19 @@ const Chip: React.FC<{
   children: React.ReactNode;
   className?: string;
   ariaLabel?: string;
-}> = ({ selected, onClick, children, className = '', ariaLabel }) => (
+  disabled?: boolean;
+  title?: string;
+}> = ({ selected, onClick, children, className = '', ariaLabel, disabled, title }) => (
   <button
     type="button"
     aria-pressed={selected}
     aria-label={ariaLabel}
+    title={title}
     onClick={onClick}
+    disabled={disabled}
     className={[
-      'inline-flex items-center rounded-full px-3 py-1.5 text-sm font-medium transition-smooth border',
+      'inline-flex items-center rounded-full px-3 py-1.5 text-sm font-medium transition-smooth border focus-visible-enhanced',
+      disabled ? 'opacity-50 cursor-not-allowed' : '',
       selected
         ? 'bg-primary-600 text-white border-primary-600 shadow-soft hover:bg-primary-700'
         : 'bg-neutral-100 text-neutral-800 border-neutral-200 hover:bg-neutral-200',
@@ -6408,6 +7323,48 @@ const Chip: React.FC<{
     {children}
   </button>
 );
+
+/* --------------------------------- Helpers -------------------------------- */
+
+type Intensity = 'low' | 'moderate' | 'high';
+
+const clampDuration = (n: number) => Math.max(5, Math.min(120, Math.round(n || 20)));
+
+const intensityFromLevel = (fitnessLevel?: string): Intensity => {
+  const level = (fitnessLevel || '').toLowerCase();
+  if (level.includes('begin')) return 'low';
+  if (level.includes('adv')) return 'high';
+  return 'moderate';
+};
+
+const suggestFocusForType = (type: WorkoutType): string[] => {
+  switch (type) {
+    case 'cardio':
+      return ['endurance', 'core'];
+    case 'hiit':
+      return ['full_body', 'power'];
+    case 'yoga':
+      return ['mobility', 'core'];
+    case 'functional':
+      return ['full_body', 'core'];
+    case 'circuit':
+      return ['full_body'];
+    case 'strength_training':
+    default:
+      return ['full_body'];
+  }
+};
+
+const labelFromType: Record<WorkoutType | 'pilates' | 'stretching', string> = {
+  strength_training: 'Strength Blocks',
+  cardio: 'Cardio Segments',
+  hiit: 'HIIT Rounds',
+  yoga: 'Flows & Holds',
+  pilates: 'Pilates Movements',
+  stretching: 'Stretching Sequences',
+  functional: 'Functional Sets',
+  circuit: 'Circuit Laps',
+};
 
 /* --------------------------------- Modal -------------------------------- */
 
@@ -6423,37 +7380,133 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
   userProfile,
 }) => {
   const navigate = useNavigate();
-
   const { user } = useAuthStore();
   const { setCurrentWorkout, setError, clearError } = useWorkoutStore();
 
+  // ---- Local state
   const [selectedWorkoutType, setSelectedWorkoutType] = useState<WorkoutType>('strength_training');
-  const [intensity, setIntensity] = useState<'low' | 'moderate' | 'high'>('moderate');
+  const [intensity, setIntensity] = useState<Intensity>('moderate');
+  const [autoIntensity, setAutoIntensity] = useState<boolean>(true);
   const [focusAreas, setFocusAreas] = useState<string[]>(['full_body']);
-  const [duration, setDuration] = useState<number>(userProfile?.timeCommitment?.minutesPerSession ?? 20);
-  const [equipment, setEquipment] = useState<Equipment[]>(userProfile?.availableEquipment ?? []);
+  const [duration, setDuration] = useState<number>(20);
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [bodyweightOnly, setBodyweightOnly] = useState<boolean>(false);
+  const [rememberSettings, setRememberSettings] = useState<boolean>(true);
+  const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
 
   const [generating, setGenerating] = useState(false);
   const [generatedWorkout, setGeneratedWorkout] = useState<any>(null);
   const [localError, setLocalError] = useState<string>('');
+  const [copied, setCopied] = useState<boolean>(false);
 
+  const initialFocusRef = useRef<HTMLButtonElement | null>(null);
+  const closeBtnRef = useRef<HTMLButtonElement | null>(null);
+  const durationSliderId = useId();
+
+  // ---- Load / reset when modal opens
   useEffect(() => {
-    if (userProfile) {
-      setDuration(userProfile.timeCommitment?.minutesPerSession ?? 20);
-      setEquipment(userProfile.availableEquipment ?? []);
-      setFocusAreas(['full_body']);
-      setIntensity('moderate');
+    if (!isOpen) return;
+
+    // Defaults
+    const defaultDuration = clampDuration(userProfile?.timeCommitment?.minutesPerSession ?? 20);
+    const defaultEquip = userProfile?.availableEquipment ?? [];
+    const defaultIntensity = intensityFromLevel(userProfile?.fitnessLevel);
+    const defaultType: WorkoutType = 'strength_training';
+
+    // Try to hydrate from localStorage if remembered
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (stored) {
+      try {
+        const s = JSON.parse(stored) as {
+          selectedWorkoutType: WorkoutType;
+          intensity: Intensity;
+          autoIntensity: boolean;
+          focusAreas: string[];
+          duration: number;
+          equipment: Equipment[];
+          bodyweightOnly: boolean;
+          rememberSettings: boolean;
+          showAdvanced?: boolean;
+        };
+
+        setSelectedWorkoutType(s.selectedWorkoutType ?? defaultType);
+        setAutoIntensity(s.autoIntensity ?? true);
+        setIntensity(s.intensity ?? defaultIntensity);
+        setFocusAreas(Array.isArray(s.focusAreas) && s.focusAreas.length > 0 ? s.focusAreas : suggestFocusForType(s.selectedWorkoutType ?? defaultType));
+        setDuration(clampDuration(s.duration ?? defaultDuration));
+        setBodyweightOnly(Boolean(s.bodyweightOnly));
+        setEquipment(s.bodyweightOnly ? [] : (s.equipment ?? defaultEquip));
+        setRememberSettings(s.rememberSettings ?? true);
+        setShowAdvanced(Boolean(s.showAdvanced));
+      } catch {
+        // Fallback to profile defaults
+        setSelectedWorkoutType(defaultType);
+        setAutoIntensity(true);
+        setIntensity(defaultIntensity);
+        setFocusAreas(suggestFocusForType(defaultType));
+        setDuration(defaultDuration);
+        setEquipment(defaultEquip);
+        setBodyweightOnly(false);
+      }
+    } else if (userProfile) {
+      // Profile‑based defaults
+      setSelectedWorkoutType(defaultType);
+      setAutoIntensity(true);
+      setIntensity(defaultIntensity);
+      setFocusAreas(suggestFocusForType(defaultType));
+      setDuration(defaultDuration);
+      setEquipment(defaultEquip);
       setBodyweightOnly(false);
-      setSelectedWorkoutType('strength_training');
-      setLocalError('');
     }
-  }, [userProfile, isOpen]);
+
+    // UI resets
+    setLocalError('');
+    setGeneratedWorkout(null);
+    setCopied(false);
+
+    // Move focus to first major control for a11y
+    // Defer to next tick to ensure elements are in the DOM
+    setTimeout(() => {
+      initialFocusRef.current?.focus();
+    }, 0);
+  }, [isOpen, userProfile]);
+
+  // Persist user choices
+  useEffect(() => {
+    if (!rememberSettings) return;
+    const payload = {
+      selectedWorkoutType,
+      intensity,
+      autoIntensity,
+      focusAreas,
+      duration,
+      equipment,
+      bodyweightOnly,
+      rememberSettings,
+      showAdvanced,
+    };
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+      // best-effort; ignore quota failures
+    }
+  }, [
+    selectedWorkoutType,
+    intensity,
+    autoIntensity,
+    focusAreas,
+    duration,
+    equipment,
+    bodyweightOnly,
+    rememberSettings,
+    showAdvanced,
+  ]);
 
   const toggleArrayValue = <T,>(arr: T[], value: T): T[] =>
     arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value];
 
   const handleClose = () => {
+    if (generating) return; // prevent accidental close mid-generation
     setGeneratedWorkout(null);
     setLocalError('');
     clearError();
@@ -6462,17 +7515,25 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
 
   const validate = () => {
     if (!user || !userProfile) {
-      setLocalError('User profile not found. Please complete onboarding first.');
-      setError('User profile not found. Please complete onboarding first.');
+      const msg = 'User profile not found. Please complete onboarding first.';
+      setLocalError(msg);
+      setError(msg);
       return false;
     }
-    if (!Number.isFinite(duration) || duration <= 0) {
-      setLocalError('Please set a valid session duration (minutes).');
+    if (!Number.isFinite(duration) || clampDuration(duration) <= 0) {
+      setLocalError('Please set a valid session duration (5–120 minutes).');
+      return false;
+    }
+    if (!focusAreas.length) {
+      setLocalError('Please choose at least one focus area.');
       return false;
     }
     return true;
   };
 
+  const resolvedIntensity: Intensity = autoIntensity ? intensityFromLevel(userProfile?.fitnessLevel) : intensity;
+
+  // ---- Generate workout
   const handleGenerateWorkout = async () => {
     if (!validate()) return;
 
@@ -6481,7 +7542,6 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
     clearError();
 
     try {
-      // Keep the original request shape; put overrides into preferences
       const request: WorkoutGenerationRequest = {
         userId: user!.id,
         fitnessLevel: userProfile!.fitnessLevel,
@@ -6489,19 +7549,24 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
         availableEquipment: bodyweightOnly ? [] : equipment,
         timeCommitment: {
           ...userProfile!.timeCommitment,
-          minutesPerSession: duration,
+          minutesPerSession: clampDuration(duration),
         },
         workoutType: selectedWorkoutType,
-        focusAreas, // array of strings
+        focusAreas,
         preferences: {
           ...(userProfile!.preferences || {}),
-          intensity, // low | moderate | high
+          intensity: resolvedIntensity,
         },
       };
 
       const workout = await WorkoutService.generateWorkout(request);
       setGeneratedWorkout(workout);
       setCurrentWorkout(workout);
+      setCopied(false);
+      // move focus to the "Start Workout" button for a11y
+      setTimeout(() => {
+        closeBtnRef.current?.focus();
+      }, 0);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to generate workout';
       setLocalError(message);
@@ -6522,44 +7587,34 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
   /* ------------------------------ Instant Preview ------------------------------ */
 
   const preview = useMemo(() => {
-    // Lightweight, friendly preview that adapts to selections
-    const blocks: { title: string; hint: string }[] = [];
-
-    const dur = Math.max(8, Math.min(90, Math.round(duration || 20)));
+    const dur = clampDuration(duration || 20);
     const warmup = Math.min(10, Math.max(3, Math.round(dur * 0.15)));
-    const work = Math.max(5, dur - warmup - 2);
-
-    const labelFromType: Record<WorkoutType, string> = {
-      strength_training: 'Strength Blocks',
-      cardio: 'Cardio Segments',
-      hiit: 'HIIT Rounds',
-      yoga: 'Flows & Holds',
-      pilates: 'Pilates Movements',
-      stretching: 'Stretching Sequences',
-      functional: 'Functional Sets',
-      circuit: 'Circuit Laps',
-    };
-
+    const cooldown = Math.min(10, Math.max(2, Math.round(dur * 0.1)));
+    const work = Math.max(4, dur - warmup - cooldown);
     const workLabel = labelFromType[selectedWorkoutType] || 'Blocks';
 
-    blocks.push({ title: `Warm‑up • ~${warmup} min`, hint: 'Mobility + activation' });
-    if (selectedWorkoutType === 'hiit') {
-      blocks.push({ title: `${workLabel} • ~${work} min`, hint: `${intensity.toUpperCase()} intervals (work/rest)` });
-    } else if (selectedWorkoutType === 'yoga') {
-      blocks.push({ title: `${workLabel} • ~${work} min`, hint: focusAreas.includes('mobility') ? 'Mobility‑focused flow' : 'Balanced vinyasa' });
-    } else {
-      blocks.push({
-        title: `${workLabel} • ~${work} min`,
-        hint:
-          focusAreas.includes('full_body')
-            ? 'Full‑body emphasis'
-            : `Focus: ${focusAreas.map((f) => f.replace('_', ' ')).join(', ')}`,
-      });
-    }
-    blocks.push({ title: 'Cool‑down • ~2‑5 min', hint: 'Breathing + stretches' });
+    const blocks: { title: string; hint: string }[] = [];
+    blocks.push({ title: `Warm‑up • ~${warmup} min`, hint: 'Light cardio, mobility, activation' });
 
-    return { dur, blocks };
-  }, [selectedWorkoutType, intensity, focusAreas, duration]);
+    if (selectedWorkoutType === 'hiit') {
+      const workSec = resolvedIntensity === 'high' ? '40s ON / 20s OFF' : resolvedIntensity === 'moderate' ? '30s / 30s' : '20s / 40s';
+      blocks.push({ title: `${workLabel} • ~${work} min`, hint: `${workSec} × intervals` });
+    } else if (selectedWorkoutType === 'yoga') {
+      blocks.push({ title: `${workLabel} • ~${work} min`, hint: focusAreas.includes('mobility') ? 'Hips, hamstrings, T‑spine' : 'Balanced vinyasa' });
+    } else if (selectedWorkoutType === 'cardio') {
+      blocks.push({ title: `${workLabel} • ~${work} min`, hint: focusAreas.includes('endurance') ? 'Steady Zone 2–3' : 'Mixed pacing' });
+    } else {
+      const hint =
+        focusAreas.includes('full_body')
+          ? 'Full‑body emphasis'
+          : `Focus: ${focusAreas.map((f) => f.replace('_', ' ')).join(', ')}`;
+      blocks.push({ title: `${workLabel} • ~${work} min`, hint });
+    }
+
+    blocks.push({ title: `Cool‑down • ~${cooldown} min`, hint: 'Breathing + stretches' });
+
+    return { dur, warmup, work, cooldown, blocks, intensity: resolvedIntensity };
+  }, [selectedWorkoutType, resolvedIntensity, focusAreas, duration]);
 
   /* ---------------------------------- UI ---------------------------------- */
 
@@ -6582,8 +7637,77 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
     );
   }
 
+  // Derived UI helpers
+  const profileHasEquipment = (userProfile.availableEquipment?.length ?? 0) > 0;
+  const focusIsSelected = (key: string) => focusAreas.includes(key);
+
+  const handleToggleFocus = (key: string) => {
+    if (key === 'full_body') {
+      setFocusAreas(['full_body']);
+      return;
+    }
+    setFocusAreas((prev) => {
+      // Remove 'full_body' if selecting a specific area
+      const next = prev.filter((f) => f !== 'full_body');
+      const maybe = toggleArrayValue(next, key);
+      // Ensure at least one remains
+      return maybe.length ? maybe : ['full_body'];
+    });
+  };
+
+  const handleDurationInput = (n: number) => setDuration(clampDuration(n));
+
+  const randomizeSelections = () => {
+    const rand = <T,>(arr: readonly T[]) => arr[Math.floor(Math.random() * arr.length)];
+    const type = rand(workoutTypes).value as WorkoutType;
+    const suggested = suggestFocusForType(type);
+    const dur = rand([10, 20, 30, 45, 60, 40, 25]);
+    const inten = rand(['low', 'moderate', 'high'] as const);
+    setSelectedWorkoutType(type);
+    setFocusAreas(suggested);
+    setAutoIntensity(false);
+    setIntensity(inten);
+    setDuration(dur);
+    setLocalError('');
+  };
+
+  const applySmartAndGenerate = async () => {
+    setAutoIntensity(true);
+    setFocusAreas(suggestFocusForType(selectedWorkoutType));
+    await handleGenerateWorkout();
+  };
+
+  const copyPlan = async () => {
+    if (!generatedWorkout) return;
+    try {
+      const summary = {
+        name: generatedWorkout.name ?? 'Workout',
+        type: generatedWorkout.type ?? selectedWorkoutType,
+        duration: generatedWorkout.estimatedDuration ?? preview.dur,
+        difficulty: generatedWorkout.difficulty ?? preview.intensity,
+        exercises: (generatedWorkout.exercises ?? []).map((x: any) => ({
+          name: x.name,
+          sets: x.sets,
+          reps: x.reps,
+          duration: x.duration,
+          rest: x.rest,
+        })),
+      };
+      await navigator.clipboard.writeText(JSON.stringify(summary, null, 2));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // Ignore; clipboard might be unavailable
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onClose={handleClose} className="relative z-50">
+    <Dialog
+      open={isOpen}
+      onClose={handleClose}
+      className="relative z-50"
+      // prevent closing on overlay click while generating
+    >
       {/* Overlay */}
       <div className="fixed inset-0 bg-neutral-950/40 backdrop-blur-[1px]" aria-hidden="true" />
 
@@ -6596,8 +7720,10 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
               <Dialog.Title className="text-xl font-semibold text-neutral-900">
                 Generate AI Workout
               </Dialog.Title>
+              <Badge variant="secondary" size="xs" className="ml-2">Beta</Badge>
             </div>
             <button
+              ref={closeBtnRef}
               onClick={handleClose}
               className="rounded-lg p-1 text-neutral-400 hover:text-neutral-600 transition-smooth focus-visible-enhanced"
               aria-label="Close modal"
@@ -6617,8 +7743,17 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
                   className="mb-4 rounded-lg border border-error-200 bg-error-50 p-3"
+                  data-testid="generation-error"
                 >
-                  <p className="text-sm text-error-700">{localError}</p>
+                  <div className="flex items-start gap-2">
+                    <span className="sr-only">Error</span>
+                    <p className="text-sm text-error-700">{localError}</p>
+                    <div className="ml-auto">
+                      <Button size="xs" variant="ghost" onClick={() => setLocalError('')}>
+                        Dismiss
+                      </Button>
+                    </div>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -6626,24 +7761,34 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
             {/* --- Selection area (hidden when result is shown) --- */}
             <AnimatePresence mode="wait">
               {!generatedWorkout ? (
-                <motion.div
+                <motion.form
                   key="selection"
                   variants={fadeUp()}
                   initial="initial"
                   animate="animate"
                   exit="exit"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleGenerateWorkout();
+                  }}
+                  aria-describedby="instant-preview"
                 >
                   {/* 1) Type */}
                   <section className="mb-6">
                     <h3 className="text-lg font-semibold text-neutral-900 mb-3">Workout Type</h3>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      {workoutTypes.map((type) => {
+                      {workoutTypes.map((type, idx) => {
                         const selected = selectedWorkoutType === type.value;
                         return (
                           <button
                             key={type.value}
+                            ref={idx === 0 ? initialFocusRef : undefined}
                             type="button"
-                            onClick={() => setSelectedWorkoutType(type.value as WorkoutType)}
+                            onClick={() => {
+                              setSelectedWorkoutType(type.value as WorkoutType);
+                              // When changing type, offer sensible focus defaults if user kept full_body only
+                              setFocusAreas((prev) => (prev.length === 1 && prev[0] === 'full_body' ? suggestFocusForType(type.value as WorkoutType) : prev));
+                            }}
                             aria-pressed={selected}
                             className={[
                               'flex items-start gap-3 rounded-2xl border-2 p-4 text-left transition-smooth',
@@ -6663,38 +7808,62 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
                     </div>
                   </section>
 
-                  {/* 2) Quick presets */}
+                  {/* 2) Duration */}
                   <section className="mb-6">
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex flex-wrap items-center gap-2 mb-3">
                       <ClockIcon className="w-5 h-5 text-neutral-500" aria-hidden />
                       <h3 className="text-lg font-semibold text-neutral-900">Duration</h3>
                       <Badge variant="secondary" size="xs">{preview.dur} min</Badge>
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
-                      {durationPresets.map((m) => (
-                        <Chip
-                          key={m}
-                          selected={duration === m}
-                          onClick={() => setDuration(m)}
-                          ariaLabel={`Set duration to ${m} minutes`}
-                        >
-                          {m} min
-                        </Chip>
-                      ))}
+                    <div className="flex flex-col gap-3">
+                      <div className="flex flex-wrap gap-2">
+                        {durationPresets.map((m) => (
+                          <Chip
+                            key={m}
+                            selected={duration === m}
+                            onClick={() => handleDurationInput(m)}
+                            ariaLabel={`Set duration to ${m} minutes`}
+                          >
+                            {m} min
+                          </Chip>
+                        ))}
+                        <div className="inline-flex items-center gap-2">
+                          <Input
+                            label="Custom"
+                            type="number"
+                            min={5}
+                            max={120}
+                            step={1}
+                            value={duration}
+                            onChange={(e) => handleDurationInput(Number(e.target.value))}
+                            className="w-28"
+                            aria-label="Custom duration (minutes)"
+                          />
+                        </div>
+                      </div>
 
-                      <div className="inline-flex items-center gap-2">
-                        <Input
-                          label="Custom"
-                          type="number"
+                      {/* Slider for faster input */}
+                      <div className="mt-2">
+                        <label htmlFor={durationSliderId} className="sr-only">Duration slider</label>
+                        <input
+                          id={durationSliderId}
+                          type="range"
                           min={5}
                           max={120}
-                          step={1}
+                          step={5}
                           value={duration}
-                          onChange={(e) => setDuration(Number(e.target.value))}
-                          className="w-28"
-                          aria-label="Custom duration (minutes)"
+                          onChange={(e) => handleDurationInput(Number(e.target.value))}
+                          className="w-full accent-primary-600"
+                          aria-valuemin={5}
+                          aria-valuemax={120}
+                          aria-valuenow={duration}
                         />
+                        <div className="mt-1 flex justify-between text-xs text-neutral-500">
+                          <span>5</span>
+                          <span>60</span>
+                          <span>120</span>
+                        </div>
                       </div>
                     </div>
                   </section>
@@ -6710,17 +7879,31 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
                       {/* Intensity */}
                       <div>
                         <p className="mb-2 text-sm font-medium text-neutral-700">Intensity</p>
-                        <div className="flex flex-wrap gap-2">
-                          {intensityOptions.map((opt) => (
-                            <Chip
-                              key={opt.value}
-                              selected={intensity === opt.value}
-                              onClick={() => setIntensity(opt.value as any)}
-                              ariaLabel={`Select intensity ${opt.label}`}
-                            >
-                              {opt.label}
-                            </Chip>
-                          ))}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Chip
+                            selected={autoIntensity}
+                            onClick={() => setAutoIntensity((s) => !s)}
+                            ariaLabel="Toggle auto intensity"
+                            title="Auto (based on profile fitness level)"
+                          >
+                            Auto (Recommended)
+                          </Chip>
+                          {!autoIntensity &&
+                            intensityOptions.map((opt) => (
+                              <Chip
+                                key={opt.value}
+                                selected={intensity === opt.value}
+                                onClick={() => setIntensity(opt.value as Intensity)}
+                                ariaLabel={`Select intensity ${opt.label}`}
+                              >
+                                {opt.label}
+                              </Chip>
+                            ))}
+                          {autoIntensity && (
+                            <Badge variant="secondary" size="xs" className="ml-1">
+                              Using: {intensityFromLevel(userProfile.fitnessLevel)}
+                            </Badge>
+                          )}
                         </div>
                       </div>
 
@@ -6731,9 +7914,10 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
                           {focusOptions.map((opt) => (
                             <Chip
                               key={opt.value}
-                              selected={focusAreas.includes(opt.value)}
-                              onClick={() => setFocusAreas((prev) => toggleArrayValue(prev, opt.value))}
+                              selected={focusIsSelected(opt.value)}
+                              onClick={() => handleToggleFocus(opt.value)}
                               ariaLabel={`Toggle focus ${opt.label}`}
+                              title={opt.value === 'full_body' ? 'Selects a balanced full‑body plan' : ''}
                             >
                               {opt.label}
                             </Chip>
@@ -6755,15 +7939,30 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
                         selected={bodyweightOnly}
                         onClick={() => {
                           setBodyweightOnly((s) => !s);
-                          if (!bodyweightOnly) setEquipment([]); // toggling ON clears equipment
+                          setEquipment((prev) => (!bodyweightOnly ? [] : prev));
                         }}
                         ariaLabel="Toggle bodyweight only"
+                        title="Use no equipment"
                       >
                         Bodyweight only
                       </Chip>
 
-                      {!bodyweightOnly && (userProfile.availableEquipment?.length ?? 0) > 0 && (
+                      {!bodyweightOnly && profileHasEquipment && (
                         <>
+                          <Chip
+                            onClick={() => setEquipment(userProfile.availableEquipment!)}
+                            ariaLabel="Select all equipment"
+                            title="Select all"
+                          >
+                            Select all
+                          </Chip>
+                          <Chip
+                            onClick={() => setEquipment([])}
+                            ariaLabel="Clear equipment"
+                            title="Clear all"
+                          >
+                            Clear
+                          </Chip>
                           {userProfile.availableEquipment!.map((eq) => (
                             <Chip
                               key={eq}
@@ -6776,15 +7975,66 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
                           ))}
                         </>
                       )}
+
+                      {!profileHasEquipment && !bodyweightOnly && (
+                        <p className="text-sm text-neutral-500">
+                          No equipment saved in profile. Add some in Settings to see quick chips.
+                        </p>
+                      )}
                     </div>
+
+                    <div className="mt-3 flex items-center gap-3">
+                      <label className="inline-flex items-center gap-2 text-sm text-neutral-700">
+                        <input
+                          type="checkbox"
+                          className="accent-primary-600"
+                          checked={rememberSettings}
+                          onChange={(e) => setRememberSettings(e.target.checked)}
+                        />
+                        Remember these choices
+                      </label>
+
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 text-sm text-neutral-600 hover:text-neutral-800 transition-smooth"
+                        onClick={() => setShowAdvanced((s) => !s)}
+                        aria-expanded={showAdvanced}
+                      >
+                        <AdjustmentsHorizontalIcon className="w-4 h-4" />
+                        Advanced
+                      </button>
+                    </div>
+
+                    <AnimatePresence initial={false}>
+                      {showAdvanced && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="mt-3 rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-700"
+                        >
+                          <p className="mb-2">
+                            Advanced options are applied automatically during generation (e.g., interval structures for HIIT, set/rep schemes for strength).
+                          </p>
+                          <ul className="list-disc pl-5 space-y-1 text-neutral-600">
+                            <li>Warm‑up and cool‑down are automatically scaled to session duration.</li>
+                            <li>Intensity influences rest times, tempos, and density.</li>
+                            <li>Focus areas guide exercise selection and ordering.</li>
+                          </ul>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </section>
 
                   {/* 5) Instant Preview */}
-                  <section className="mb-6">
+                  <section className="mb-6" id="instant-preview">
                     <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
                       <div className="mb-2 flex items-center gap-2">
                         <SparklesIcon className="w-5 h-5 text-primary-600" aria-hidden />
                         <h4 className="font-semibold text-neutral-900">Instant Preview</h4>
+                        <Badge variant="secondary" size="xs">{selectedWorkoutType.replace('_', ' ')}</Badge>
+                        <Badge variant="secondary" size="xs">Intensity: {preview.intensity}</Badge>
+                        {bodyweightOnly && <Badge variant="secondary" size="xs">Bodyweight</Badge>}
                       </div>
                       <p className="text-sm text-neutral-600 mb-3">
                         A quick look at how your session could be structured:
@@ -6801,16 +8051,68 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
                   </section>
 
                   {/* Actions */}
-                  <div className="flex items-center justify-end gap-3">
-                    <Button variant="ghost" onClick={handleClose}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleGenerateWorkout} loading={generating} className="px-6">
-                      <SparklesIcon className="w-5 h-5 mr-2" aria-hidden />
-                      Generate Workout
-                    </Button>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={randomizeSelections}
+                        title="Randomize selections"
+                      >
+                        <ArrowPathIcon className="w-5 h-5 mr-2" aria-hidden />
+                        Surprise me
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={applySmartAndGenerate}
+                        title="Use smart defaults and generate"
+                      >
+                        <SparklesIcon className="w-5 h-5 mr-2" aria-hidden />
+                        Smart Generate
+                      </Button>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3">
+                      <Button type="button" variant="ghost" onClick={handleClose}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" loading={generating} className="px-6" data-testid="generate-btn">
+                        <SparklesIcon className="w-5 h-5 mr-2" aria-hidden />
+                        Generate Workout
+                      </Button>
+                    </div>
                   </div>
-                </motion.div>
+
+                  {/* Loading overlay (subtle) */}
+                  <AnimatePresence>
+                    {generating && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-white/50 backdrop-blur-[1px] rounded-2xl"
+                        aria-hidden="true"
+                      >
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="flex flex-col items-center">
+                            <div className="flex gap-2 mb-2">
+                              {[0, 1, 2].map((i) => (
+                                <motion.div
+                                  key={i}
+                                  className="h-2 w-2 rounded-full bg-primary-600"
+                                  animate={{ y: [0, -6, 0] }}
+                                  transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.12 }}
+                                />
+                              ))}
+                            </div>
+                            <p className="text-sm text-neutral-700">Crafting your workout…</p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.form>
               ) : (
                 /* ---------------------------- Generated Result ---------------------------- */
                 <motion.div
@@ -6824,12 +8126,30 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
                     <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-success-100">
                       <SparklesIcon className="h-8 w-8 text-success-600" aria-hidden />
                     </div>
-                    <h3 className="text-xl font-semibold text-neutral-900 mb-2">Your Workout is Ready! 🎉</h3>
-                    <p className="text-neutral-600">AI has generated a personalized workout just for you.</p>
+                    <h3 className="text-xl font-semibold text-neutral-900 mb-2">
+                      Your Workout is Ready! 🎉
+                    </h3>
+                    <p className="text-neutral-600">
+                      AI generated a personalized session from your selections.
+                    </p>
                   </div>
 
                   <div className="rounded-2xl bg-gradient-to-r from-primary-50 to-secondary-50 p-6 mb-6 border border-neutral-200">
-                    <h4 className="text-lg font-semibold text-neutral-900 mb-2">{generatedWorkout.name}</h4>
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+                      <h4 className="text-lg font-semibold text-neutral-900">
+                        {generatedWorkout.name ?? 'Personalized Workout'}
+                      </h4>
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => setGeneratedWorkout(null)}>
+                          Edit selections
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={copyPlan} title="Copy summary JSON to clipboard">
+                          {copied ? <CheckIcon className="w-4 h-4 mr-2" /> : <ClipboardIcon className="w-4 h-4 mr-2" />}
+                          {copied ? 'Copied' : 'Copy'}
+                        </Button>
+                      </div>
+                    </div>
+
                     {generatedWorkout.description && (
                       <p className="text-neutral-700 mb-4">{generatedWorkout.description}</p>
                     )}
@@ -6842,7 +8162,7 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
                         <strong>Exercises:</strong> {generatedWorkout.exercises?.length ?? 0}
                       </div>
                       <div>
-                        <strong>Difficulty:</strong> {generatedWorkout.difficulty ?? '—'}
+                        <strong>Difficulty:</strong> {generatedWorkout.difficulty ?? preview.intensity}
                       </div>
                       <div>
                         <strong>Type:</strong> {generatedWorkout.type ?? selectedWorkoutType}
@@ -6855,12 +8175,21 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
                         <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           {generatedWorkout.exercises.slice(0, 6).map((ex: any, idx: number) => (
                             <li key={idx} className="rounded-xl bg-white p-3 shadow-soft border border-neutral-200">
-                              <p className="font-medium text-neutral-900">{ex.name ?? `Exercise ${idx + 1}`}</p>
-                              {ex.sets && ex.reps && (
-                                <p className="text-sm text-neutral-600">
-                                  {ex.sets} sets × {ex.reps} reps
-                                </p>
-                              )}
+                              <p className="font-medium text-neutral-900">
+                                {ex.name ?? `Exercise ${idx + 1}`}
+                              </p>
+                              <p className="text-sm text-neutral-600">
+                                {ex.sets && ex.reps ? (
+                                  <>
+                                    {ex.sets} sets × {ex.reps} reps
+                                  </>
+                                ) : ex.duration ? (
+                                  <>~{ex.duration} sec</>
+                                ) : (
+                                  <>Details provided in workout</>
+                                )}
+                                {ex.rest ? <span className="text-neutral-500"> • Rest {ex.rest}s</span> : null}
+                              </p>
                             </li>
                           ))}
                         </ul>
@@ -6872,7 +8201,7 @@ export const WorkoutGenerationModal: React.FC<WorkoutGenerationModalProps> = ({
                     <Button variant="outline" onClick={() => setGeneratedWorkout(null)}>
                       Generate Another
                     </Button>
-                    <Button onClick={handleStartWorkout} className="px-6">
+                    <Button onClick={handleStartWorkout} className="px-6" data-testid="start-workout-btn">
                       Start Workout
                     </Button>
                   </div>

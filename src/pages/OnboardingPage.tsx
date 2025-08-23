@@ -44,7 +44,7 @@ export const OnboardingPage: React.FC = () => {
     timeCommitment: {
       daysPerWeek: 3,
       minutesPerSession: 30,
-      preferredTimes: [],
+      preferredTimes: ['morning'], // Default to morning
     },
     preferences: {
       workoutTypes: ['strength_training'], // Default to strength training

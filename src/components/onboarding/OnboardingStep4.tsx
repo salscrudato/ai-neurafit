@@ -28,14 +28,7 @@ const minutesPerSessionOptions = [
   { value: 90, label: '90 min', description: 'Long sessions' },
 ];
 
-const preferredTimesOptions = [
-  { value: 'early_morning', label: 'Early Morning', description: '5:00 – 8:00 AM' },
-  { value: 'morning',       label: 'Morning',       description: '8:00 – 11:00 AM' },
-  { value: 'midday',        label: 'Midday',        description: '11:00 AM – 2:00 PM' },
-  { value: 'afternoon',     label: 'Afternoon',     description: '2:00 – 5:00 PM' },
-  { value: 'evening',       label: 'Evening',       description: '5:00 – 8:00 PM' },
-  { value: 'night',         label: 'Night',         description: '8:00 – 11:00 PM' },
-];
+
 
 export const OnboardingStep4: React.FC<OnboardingStep4Props> = memo(
   ({ data, onUpdate, onNext, onComplete, onPrev, submitting = false }) => {
@@ -44,23 +37,17 @@ export const OnboardingStep4: React.FC<OnboardingStep4Props> = memo(
 
     const groupIdDays = useId();
     const groupIdMinutes = useId();
-    const groupIdTimes = useId();
     const descDays = `${groupIdDays}-desc`;
     const descMinutes = `${groupIdMinutes}-desc`;
-    const descTimes = `${groupIdTimes}-desc`;
 
     const daysSelected = data?.timeCommitment?.daysPerWeek ?? 0;
     const minutesSelected = data?.timeCommitment?.minutesPerSession ?? 0;
-    const timesSelected: string[] = Array.isArray(data?.timeCommitment?.preferredTimes)
-      ? data.timeCommitment.preferredTimes
-      : [];
 
 
 
     // Refs for roving focus
     const daysRefs = useRef<Array<HTMLButtonElement | null>>([]);
     const minutesRefs = useRef<Array<HTMLButtonElement | null>>([]);
-    const timesRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
     const firstDaysIndex = Math.max(
       0,
@@ -69,10 +56,6 @@ export const OnboardingStep4: React.FC<OnboardingStep4Props> = memo(
     const firstMinutesIndex = Math.max(
       0,
       minutesPerSessionOptions.findIndex((o) => o.value === minutesSelected)
-    );
-    const firstTimesIndex = Math.max(
-      0,
-      preferredTimesOptions.findIndex((o) => timesSelected.includes(o.value))
     );
 
     /* ------------------------------ Updaters ------------------------------ */
@@ -93,13 +76,7 @@ export const OnboardingStep4: React.FC<OnboardingStep4Props> = memo(
       updateTimeCommitment({ minutesPerSession: minutes });
     };
 
-    const handlePreferredTimeToggle = (time: string) => {
-      const currentTimes = timesSelected;
-      const next = currentTimes.includes(time)
-        ? currentTimes.filter((t) => t !== time)
-        : [...currentTimes, time];
-      updateTimeCommitment({ preferredTimes: next });
-    };
+
 
 
 
@@ -319,62 +296,7 @@ export const OnboardingStep4: React.FC<OnboardingStep4Props> = memo(
             </div>
           </section>
 
-          {/* Preferred times — Checkbox group */}
-          <section>
-            <h3 className="text-lg font-semibold text-neutral-900 mb-4">When do you prefer to work out?</h3>
-            <p className="text-sm text-neutral-600 mb-4">Select all that work for you</p>
-            <p id={descTimes} className="sr-only">Select one or more preferred time windows</p>
 
-            <div
-              role="group"
-              aria-labelledby={`${groupIdTimes}-label`}
-              aria-describedby={descTimes}
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
-            >
-              <span id={`${groupIdTimes}-label`} className="sr-only">Preferred times</span>
-              {preferredTimesOptions.map((option, index) => {
-                const selected = timesSelected.includes(option.value);
-                return (
-                  <motion.button
-                    key={option.value}
-                    ref={(el) => { timesRefs.current[index] = el; }}
-                    type="button"
-                    role="checkbox"
-                    aria-checked={selected}
-                    tabIndex={index === (firstTimesIndex >= 0 ? firstTimesIndex : 0) ? 0 : -1}
-                    initial={reduceMotion ? false : { opacity: 0, y: 16 }}
-                    animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-                    transition={{ duration: 0.25, delay: index * 0.05 }}
-                    onKeyDown={(e) => onCheckboxKeyDown(e, timesRefs, index, () => handlePreferredTimeToggle(option.value))}
-                    onClick={() => handlePreferredTimeToggle(option.value)}
-                    className={[
-                      'p-4 rounded-lg border-2 transition-all duration-200 text-center bg-white',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2',
-                      selected
-                        ? 'border-primary-500 bg-primary-50 shadow-md'
-                        : 'border-neutral-200 hover:border-neutral-300 hover:shadow-sm',
-                    ].join(' ')}
-                  >
-                    <div className="font-semibold text-neutral-900 mb-1">{option.label}</div>
-                    <div className="text-sm text-neutral-600">{option.description}</div>
-                    {selected && (
-                      <div className="mt-2 inline-flex items-center justify-center w-5 h-5 bg-primary-600 rounded-full">
-                        <svg className="w-3 h-3 text-white" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                          <path
-                            fillRule="evenodd"
-                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </div>
-                    )}
-                  </motion.button>
-                );
-              })}
-            </div>
-
-
-          </section>
         </div>
 
 

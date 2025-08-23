@@ -56,9 +56,17 @@ export const EQUIPMENT_TYPES = [
 export type Equipment = (typeof EQUIPMENT_TYPES)[number];
 
 export const WORKOUT_TYPES = [
-  'strength_training',
+  'push_day',
+  'pull_day',
+  'legs',
+  'upper_body',
+  'full_body',
   'cardio',
   'hiit',
+  'strength_training',
+  'core_abs',
+  'custom',
+  // Legacy types for backward compatibility
   'yoga',
   'pilates',
   'stretching',
@@ -300,7 +308,7 @@ export interface ProgressMetrics {
 
 /** Request payload to generate a workout for a specific user context. */
 export interface WorkoutGenerationRequest {
-  userId: string /* or UserId */;
+  userId?: string /* or UserId */; // Optional - backend gets from auth context
 
   fitnessLevel: FitnessLevel;
   fitnessGoals: FitnessGoal[];

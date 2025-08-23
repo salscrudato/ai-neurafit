@@ -14,6 +14,7 @@ import OpenAI from 'openai';
 import { z } from 'zod';
 import { createHash } from 'crypto';
 import { db, admin } from './shared';
+import { Timestamp } from 'firebase-admin/firestore';
 
 /* -----------------------------------------------------------------------------
  * OpenAI client (lazy)
@@ -78,7 +79,7 @@ const WorkoutPlanSchema = z.object({
   calorieEstimate: z.number().int().min(50).max(1500).optional(),
 });
 
-const PreferredTime = z.enum(['morning', 'afternoon', 'evening', 'variable']);
+const PreferredTime = z.enum(['morning', 'afternoon', 'evening', 'variable', 'early_morning']);
 
 const ProfileShape = z.object({
   fitnessLevel: Difficulty,
@@ -185,13 +186,14 @@ function extractJson(text: string): string {
 async function enforceRateLimit(uid: string, key: string) {
   const ref = db.collection('_rateLimits').doc(`${uid}:${key}`);
   await db.runTransaction(async (tx) => {
-    const now = admin.firestore.Timestamp.now();
-    const hourAgo = admin.firestore.Timestamp.fromMillis(now.toMillis() - 3600_000);
-    const fifteenAgo = admin.firestore.Timestamp.fromMillis(now.toMillis() - 15_000);
+    const nowMs = Date.now();
+    const now = Timestamp.fromMillis(nowMs);
+    const hourAgo = Timestamp.fromMillis(nowMs - 3600_000);
+    const fifteenAgo = Timestamp.fromMillis(nowMs - 15_000);
 
     const snap = await tx.get(ref);
     const data = snap.exists
-      ? (snap.data() as { lastCallAt?: admin.firestore.Timestamp; windowStart?: admin.firestore.Timestamp; count?: number })
+      ? (snap.data() as { lastCallAt?: Timestamp; windowStart?: Timestamp; count?: number })
       : {};
 
     // Short-circuit: 1 call / 15s
@@ -223,42 +225,61 @@ async function enforceRateLimit(uid: string, key: string) {
  * ---------------------------------------------------------------------------*/
 async function callModelJSON(messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]) {
   const openai = getOpenAI();
+
+  // Optimized parameters for GPT-4o Mini JSON compliance
+  const baseParams = {
+    model: OPENAI_MODEL,
+    temperature: 0.1, // Lower temperature for more consistent JSON structure
+    max_tokens: 3000, // Increased for complex workouts
+    top_p: 0.9, // Focused sampling for better structure compliance
+    frequency_penalty: 0.1, // Slight penalty to avoid repetition
+    presence_penalty: 0.1, // Encourage diverse exercise selection
+  };
+
   try {
+    // Primary attempt with JSON mode (GPT-4o Mini supports this)
     const completion = await openai.chat.completions.create({
-      model: OPENAI_MODEL,
+      ...baseParams,
       messages,
-      temperature: 0.6,
-      max_tokens: 2400,
-      response_format: { type: 'json_object' as const }, // JSON mode
+      response_format: { type: 'json_object' as const },
     });
+
     const content = completion.choices?.[0]?.message?.content;
     const usage = completion.usage ?? undefined;
+
     if (!content) throw new Error('Empty model response.');
     return { content, usage };
+
   } catch (err: any) {
-    // Fallback: retry without response_format if model doesn't support it
     const msg = `${err?.message || err}`;
-    const unsupported = /response_format/i.test(msg);
-    if (unsupported) {
-      const completion = await getOpenAI().chat.completions.create({
-        model: OPENAI_MODEL,
-        messages: [
-          ...messages,
-          {
-            role: 'system',
-            content:
-              'Return ONLY a valid JSON object. Do not include markdown fences or any commentary.',
-          },
-        ],
-        temperature: 0.6,
-        max_tokens: 2400,
-      });
-      const content = completion.choices?.[0]?.message?.content;
-      const usage = completion.usage ?? undefined;
-      if (!content) throw new Error('Empty model response (fallback).');
-      return { content, usage };
-    }
-    throw err;
+    logger.warn('JSON mode failed, attempting fallback', { error: msg });
+
+    // Fallback with enhanced JSON instruction
+    const enhancedMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+      ...messages,
+      {
+        role: 'system' as const,
+        content: [
+          'CRITICAL: Your response must be ONLY a valid JSON object.',
+          'Do NOT include markdown code blocks (```json).',
+          'Do NOT include any explanatory text before or after the JSON.',
+          'Do NOT wrap the JSON in any container objects.',
+          'Start your response with { and end with }.',
+          'Validate your JSON structure before responding.',
+        ].join(' ')
+      },
+    ];
+
+    const completion = await openai.chat.completions.create({
+      ...baseParams,
+      messages: enhancedMessages,
+    });
+
+    const content = completion.choices?.[0]?.message?.content;
+    const usage = completion.usage ?? undefined;
+
+    if (!content) throw new Error('Empty model response (fallback).');
+    return { content, usage };
   }
 }
 
@@ -267,15 +288,31 @@ async function callModelJSON(messages: OpenAI.Chat.Completions.ChatCompletionMes
  * ---------------------------------------------------------------------------*/
 function buildSystemPrompt(): string {
   return [
-    'You are an elite personal trainer and exercise physiologist.',
-    'Create highly personalized, progressive workouts that are safe, effective, and motivating.',
-    'Requirements:',
-    '- Safety first (clear form cues, account for limitations)',
-    '- Progressive overload (note how to progress/regress)',
-    '- Specificity to goals and equipment only',
-    '- Variety without randomness, and respect session time',
-    '- Recovery balance and smart rest',
-    'Output: STRICT JSON conforming to the provided schema. No comments or markdown.',
+    '# ROLE: Elite AI Fitness Coach & Exercise Physiologist',
+    'You are a world-class personal trainer with expertise in exercise science, biomechanics, and personalized program design.',
+    '',
+    '# TASK: Generate Personalized Workout Plan',
+    'Create a scientifically-backed, personalized workout that maximizes results while ensuring safety and adherence.',
+    '',
+    '# CORE PRINCIPLES:',
+    '1. SAFETY FIRST: Account for fitness level, limitations, proper form',
+    '2. PROGRESSIVE OVERLOAD: Include clear progression/regression paths',
+    '3. SPECIFICITY: Match goals, equipment, and time constraints exactly',
+    '4. VARIETY: Balanced, engaging exercises without randomness',
+    '5. RECOVERY: Appropriate rest periods and muscle group rotation',
+    '',
+    '# CRITICAL OUTPUT REQUIREMENTS:',
+    '⚠️  MANDATORY: Return ONLY valid JSON matching the exact schema provided',
+    '⚠️  NO markdown code blocks, NO comments, NO explanatory text',
+    '⚠️  NO wrapper objects like {"session": {...}} or {"workout": {...}}',
+    '⚠️  Return the workout plan object directly as pure JSON',
+    '',
+    '# QUALITY STANDARDS:',
+    '- Exercise names must be clear and specific (e.g., "Barbell Back Squat" not "Squats")',
+    '- Instructions must be concise but complete (20-40 words)',
+    '- Target muscles must use anatomical terms (e.g., "quadriceps", "latissimus dorsi")',
+    '- Equipment must match available items exactly',
+    '- Duration must respect time constraints ±2 minutes',
   ].join('\n');
 }
 
@@ -311,8 +348,70 @@ DATA POINTS
 - Recent progress sample: ${JSON.stringify(input.progressSample)}
 - Frequently used exercises to avoid repeating: ${input.frequentExercises.join(', ') || 'none'}
 
-SCHEMA
-${WorkoutPlanSchema.toString()}
+# MANDATORY JSON SCHEMA - FOLLOW EXACTLY:
+
+{
+  "name": "string - Descriptive workout title (1-64 chars)",
+  "description": "string - Brief overview (1-2000 chars)",
+  "type": "string - Must match requested workout type exactly",
+  "difficulty": "beginner" | "intermediate" | "advanced",
+  "estimatedDuration": "number - Total minutes (10-180)",
+  "exercises": [
+    {
+      "name": "string - Specific exercise name (1-64 chars)",
+      "description": "string - Exercise overview (1-2000 chars)",
+      "instructions": ["string"] - Array of instruction steps (1-12 items, each 1-160 chars)",
+      "targetMuscles": ["string"] - Array of muscle names (1-10 items, each 1-64 chars)",
+      "equipment": ["string"] - Array of equipment needed (0-10 items, each 1-64 chars)",
+      "difficulty": "beginner" | "intermediate" | "advanced",
+      "sets": "number - Number of sets (1-10)",
+      "reps": "number | null - Reps per set (1-50, null if duration-based)",
+      "duration": "number | null - Seconds per set (5-3600, null if rep-based)",
+      "restTime": "number - Rest between sets in seconds (0-600)",
+      "tips": ["string"] - Array of exercise tips (0-10 items, each 1-160 chars)"
+    }
+  ],
+  "equipment": ["string"] - All equipment used in workout (max 20 items)",
+  "targetMuscles": ["string"] - All muscles targeted (max 20 items)",
+  "progressionTips": ["string"] - Long-term progression advice (max 10 items, optional)",
+  "motivationalQuote": "string - Inspiring fitness quote (1-160 chars, optional)"
+}
+
+# EXAMPLE OUTPUT (REFERENCE ONLY):
+{
+  "name": "Push Day Power Session",
+  "description": "Upper body pushing workout focusing on chest, shoulders, and triceps with progressive overload.",
+  "type": "push_day",
+  "difficulty": "intermediate",
+  "estimatedDuration": 45,
+  "exercises": [
+    {
+      "name": "Dumbbell Bench Press",
+      "description": "Compound pushing exercise targeting chest, shoulders, and triceps using dumbbells.",
+      "instructions": [
+        "Lie on bench with dumbbell in each hand at chest level",
+        "Press weights up until arms are fully extended",
+        "Lower with control back to starting position",
+        "Keep core tight and feet planted throughout"
+      ],
+      "targetMuscles": ["pectoralis major", "anterior deltoid", "triceps brachii"],
+      "equipment": ["dumbbells", "bench"],
+      "difficulty": "intermediate",
+      "sets": 4,
+      "reps": 8,
+      "duration": null,
+      "restTime": 120,
+      "tips": [
+        "Keep shoulder blades retracted",
+        "Use full range of motion"
+      ]
+    }
+  ],
+  "equipment": ["barbell", "bench"],
+  "targetMuscles": ["pectoralis major", "anterior deltoid", "triceps brachii"],
+  "progressionTips": ["Focus on progressive overload", "Track all lifts in a log"],
+  "motivationalQuote": "Strength grows in the moments when you think you can't go on but you keep going anyway."
+}
 
 CONSTRAINTS
 - Use only the allowed equipment.
@@ -462,14 +561,78 @@ export const generateWorkout = onCall(
       { role: 'user', content: userMsg },
     ]);
 
-    // Parse & validate JSON
-    const json = extractJson(content);
-    const parsed = WorkoutPlanSchema.safeParse(JSON.parse(json));
-    if (!parsed.success) {
-      logger.error('Model JSON failed validation', { issues: parsed.error.issues });
-      throw new HttpsError('internal', 'Model returned invalid plan JSON.');
+    // Advanced JSON parsing with multiple fallback strategies
+    logger.info('Raw OpenAI response', {
+      content: content.substring(0, 300),
+      length: content.length,
+      model: OPENAI_MODEL
+    });
+
+    let workoutData: any;
+    try {
+      // Strategy 1: Extract JSON from response
+      const json = extractJson(content);
+      logger.info('Extracted JSON', { json: json.substring(0, 300) });
+      workoutData = JSON.parse(json);
+
+      // Strategy 2: Handle common wrapper patterns
+      if (workoutData.session && typeof workoutData.session === 'object') {
+        logger.info('Unwrapping "session" wrapper');
+        workoutData = workoutData.session;
+      } else if (workoutData.workout && typeof workoutData.workout === 'object') {
+        logger.info('Unwrapping "workout" wrapper');
+        workoutData = workoutData.workout;
+      } else if (workoutData.plan && typeof workoutData.plan === 'object') {
+        logger.info('Unwrapping "plan" wrapper');
+        workoutData = workoutData.plan;
+      }
+
+    } catch (parseError) {
+      logger.error('JSON parsing failed', {
+        error: parseError,
+        rawContent: content.substring(0, 500)
+      });
+      throw new HttpsError('internal', 'Failed to parse AI response as JSON.');
     }
+
+    // Strategy 3: Validate against schema with detailed error reporting
+    const parsed = WorkoutPlanSchema.safeParse(workoutData);
+    if (!parsed.success) {
+      const missingFields = parsed.error.issues
+        .filter(issue => issue.code === 'invalid_type' && issue.received === 'undefined')
+        .map(issue => issue.path.join('.'));
+
+      logger.error('Schema validation failed', {
+        issues: parsed.error.issues.slice(0, 5), // Limit to first 5 issues
+        receivedKeys: Object.keys(workoutData || {}),
+        missingFields,
+        sampleData: JSON.stringify(workoutData).substring(0, 500)
+      });
+
+      throw new HttpsError('internal',
+        `AI response validation failed. Missing fields: ${missingFields.join(', ')}`
+      );
+    }
+
     let plan = parsed.data;
+
+    // Final validation: Ensure all required fields are properly populated
+    if (!plan.name || plan.name.length < 5) {
+      throw new HttpsError('internal', 'Generated workout name is too short or missing.');
+    }
+    if (!plan.exercises || plan.exercises.length === 0) {
+      throw new HttpsError('internal', 'Generated workout has no exercises.');
+    }
+    if (plan.exercises.some(ex => !ex.name || !ex.instructions)) {
+      throw new HttpsError('internal', 'Generated workout has incomplete exercise data.');
+    }
+
+    logger.info('Workout validation passed', {
+      name: plan.name,
+      exerciseCount: plan.exercises.length,
+      duration: plan.estimatedDuration,
+      difficulty: plan.difficulty
+    });
 
     // Enforce equipment constraint at plan level
     plan.equipment = pickAllowedEquipment(

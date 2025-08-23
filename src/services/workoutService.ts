@@ -1,3 +1,4 @@
+// src/services/workoutService.ts
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../lib/firebase';
 import { logger } from '../utils/logger';
@@ -16,21 +17,30 @@ import type {
 
 /** ---- Shared helpers ------------------------------------------------------ */
 
-const CALLABLE_TIMEOUT_MS = 15_000;
+/** Hard stop for all callable requests (ms) */
+const CALLABLE_TIMEOUT_MS = 30_000; // Increased for AI generation
 
+/**
+ * Adds a timeout to any promise to ensure the UI never hangs on slow callables.
+ */
 function withTimeout<T>(p: Promise<T>, ms = CALLABLE_TIMEOUT_MS, label = 'request'): Promise<T> {
-  let id: number | undefined;
+  let id: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
-    id = window.setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    id = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
   });
-  return Promise.race([p, timeout]).finally(() => clearTimeout(id));
+  return Promise.race([p, timeout]).finally(() => {
+    if (id) clearTimeout(id);
+  });
 }
 
+/**
+ * Normalizes Firebase Functions errors into readable messages for users.
+ */
 function mapFunctionsError(error: any): Error {
   const code = error?.code as string | undefined;
   const msg = error?.message as string | undefined;
 
-  const nice =
+  const friendly =
     code === 'functions/invalid-argument' ? 'Invalid data sent to server.'
     : code === 'functions/permission-denied' ? 'You do not have permission to perform this action.'
     : code === 'functions/not-found' ? 'Resource not found.'
@@ -39,17 +49,24 @@ function mapFunctionsError(error: any): Error {
     : code === 'functions/unavailable' ? 'Service temporarily unavailable. Check your connection and retry.'
     : msg || 'An unexpected error occurred.';
 
-  return new Error(nice);
+  return new Error(friendly);
 }
 
+/**
+ * Small wrapper around httpsCallable with:
+ *  - consistent logging
+ *  - timeout protection
+ *  - error normalization
+ */
 async function callFn<TReq, TRsp>(name: string, payload: TReq): Promise<TRsp> {
   logger.api.request(name, 'callable');
   const fn = httpsCallable<TReq, TRsp>(functions, name);
-  const started = performance.now();
+  const started = typeof performance !== 'undefined' ? performance.now() : Date.now();
 
   try {
     const res = await withTimeout(fn(payload), CALLABLE_TIMEOUT_MS, name);
-    logger.api.response(name, 200, performance.now() - started);
+    const ended = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    logger.api.response(name, 200, ended - started);
     return res.data;
   } catch (err: any) {
     logger.api.error(name, err);
@@ -57,7 +74,7 @@ async function callFn<TReq, TRsp>(name: string, payload: TReq): Promise<TRsp> {
   }
 }
 
-/** ---- Contracts from Functions ------------------------------------------- */
+/** ---- Callable contracts -------------------------------------------------- */
 
 export interface GenerateWorkoutResponse {
   success: boolean;
@@ -70,6 +87,7 @@ export interface GetExercisesRequest {
   difficulty?: FitnessLevel;
   /** Optional category/kind of exercise (maps to your WorkoutType) */
   category?: WorkoutType;
+  /** Maximum number of results to return */
   limit?: number;
   /** Optional free-text query */
   search?: string;
@@ -114,12 +132,14 @@ export class WorkoutService {
     if (!data?.success || !data.workoutPlan) {
       throw new Error('Failed to generate workout');
     }
-    logger.workout.generated(request.userId, data.workoutPlan.id);
+    logger.workout.generated(request.userId || 'unknown', data.workoutPlan.id);
     return data.workoutPlan;
   }
 
   /** Get exercises by filters */
-  static async getExercises(request: GetExercisesRequest = {}): Promise<(Exercise & { id: string })[]> {
+  static async getExercises(
+    request: GetExercisesRequest = {}
+  ): Promise<(Exercise & { id: string })[]> {
     const data = await callFn<GetExercisesRequest, GetExercisesResponse>('getExercises', request);
     return data.exercises ?? [];
   }
@@ -173,7 +193,7 @@ export class WorkoutService {
       );
       return data.sessions ?? [];
     } catch (err) {
-      // Keep the existing page functional if the function isn’t available yet
+      // Keep the existing page functional if the function isn’t available yet.
       logger.workout.error('getWorkoutHistory failed', err as Error);
       return [];
     }

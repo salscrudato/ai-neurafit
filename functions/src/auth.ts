@@ -10,6 +10,7 @@
 
 import * as functions from 'firebase-functions';
 import { db, admin } from './shared';
+import { FieldValue } from 'firebase-admin/firestore';
 
 /* ------------------------------ Utilities ------------------------------ */
 
@@ -72,7 +73,7 @@ export const onAuthUserCreate = functions
   .runWith({ memory: '256MB', timeoutSeconds: 60 })
   .auth.user()
   .onCreate(async (user) => {
-    const now = admin.firestore.FieldValue.serverTimestamp();
+    const now = FieldValue.serverTimestamp();
 
     // Public/user doc (kept lean; avoid storing sensitive data)
     const userDoc = {

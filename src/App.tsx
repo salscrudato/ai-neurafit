@@ -37,6 +37,7 @@ const ROUTE_NAMES: Record<string, string> = {
   '/app/workout': 'Workout',
   '/app/history': 'History',
   '/app/profile': 'Profile',
+  '/app/settings': 'Settings',
 };
 
 /* ---------- Lazy pages (code splitting) ---------- */
@@ -67,6 +68,11 @@ const HistoryPage = lazy(() =>
 const ProfilePage = lazy(() =>
   import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })),
 );
+/** NEW: Settings */
+const SettingsPage = lazy(() =>
+  import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })),
+);
+
 const Layout = lazy(() =>
   import('./components/layout/Layout').then((m) => ({ default: m.Layout })),
 );
@@ -190,6 +196,7 @@ function PrefetchOnIdle() {
       void import('./pages/WorkoutPage').catch(() => {});
       void import('./pages/ProfilePage').catch(() => {});
       void import('./pages/HistoryPage').catch(() => {});
+      void import('./pages/SettingsPage').catch(() => {}); // NEW
     };
 
     const w = window as any;
@@ -234,84 +241,93 @@ function AppShell() {
         <NetworkStatusBanner />
         <PrefetchOnIdle />
 
-      <div className="min-h-screen bg-neutral-50">
-        <Suspense fallback={<PageSuspenseFallback message={`Loading ${APP_NAME}...`} />}>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <div className="min-h-screen bg-neutral-50">
+          <Suspense fallback={<PageSuspenseFallback message={`Loading ${APP_NAME}...`} />}>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignupPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-            {/* Protected routes */}
-            <Route
-              path="/onboarding"
-              element={
-                <ProtectedRoute>
-                  <OnboardingPage />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/app"
-              element={
-                <ProtectedRoute>
-                  <Suspense fallback={<PageSuspenseFallback message="Loading app..." />}>
-                    <Layout />
-                  </Suspense>
-                </ProtectedRoute>
-              }
-            >
+              {/* Protected routes */}
               <Route
-                index
+                path="/onboarding"
                 element={
-                  <Suspense
-                    fallback={<PageSuspenseFallback message="Loading dashboard..." />}
-                  >
-                    <DashboardPage />
-                  </Suspense>
+                  <ProtectedRoute>
+                    <OnboardingPage />
+                  </ProtectedRoute>
                 }
               />
-              <Route
-                path="workout"
-                element={
-                  <Suspense
-                    fallback={<PageSuspenseFallback message="Loading workout..." />}
-                  >
-                    <WorkoutPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="history"
-                element={
-                  <Suspense
-                    fallback={<PageSuspenseFallback message="Loading history..." />}
-                  >
-                    <HistoryPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="profile"
-                element={
-                  <Suspense
-                    fallback={<PageSuspenseFallback message="Loading profile..." />}
-                  >
-                    <ProfilePage />
-                  </Suspense>
-                }
-              />
-            </Route>
 
-            {/* Catch-all */}
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </Suspense>
+              <Route
+                path="/app"
+                element={
+                  <ProtectedRoute>
+                    <Suspense fallback={<PageSuspenseFallback message="Loading app..." />}>
+                      <Layout />
+                    </Suspense>
+                  </ProtectedRoute>
+                }
+              >
+                <Route
+                  index
+                  element={
+                    <Suspense
+                      fallback={<PageSuspenseFallback message="Loading dashboard..." />}
+                    >
+                      <DashboardPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="workout"
+                  element={
+                    <Suspense
+                      fallback={<PageSuspenseFallback message="Loading workout..." />}
+                    >
+                      <WorkoutPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="history"
+                  element={
+                    <Suspense
+                      fallback={<PageSuspenseFallback message="Loading history..." />}
+                    >
+                      <HistoryPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="profile"
+                  element={
+                    <Suspense
+                      fallback={<PageSuspenseFallback message="Loading profile..." />}
+                    >
+                      <ProfilePage />
+                    </Suspense>
+                  }
+                />
+                {/* NEW: Settings */}
+                <Route
+                  path="settings"
+                  element={
+                    <Suspense
+                      fallback={<PageSuspenseFallback message="Loading settings..." />}
+                    >
+                      <SettingsPage />
+                    </Suspense>
+                  }
+                />
+              </Route>
 
-
-      </div>
+              {/* Catch-all */}
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </Suspense>
+        </div>
       </AuthProvider>
     </Router>
   );
