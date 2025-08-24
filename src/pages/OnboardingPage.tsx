@@ -142,12 +142,11 @@ export const OnboardingPage: React.FC = () => {
       // equipment optional; no-op
     }
     if (step === 4) {
-      const { daysPerWeek, minutesPerSession, preferredTimes } = data.timeCommitment;
+      const { daysPerWeek, minutesPerSession } = data.timeCommitment;
       if (daysPerWeek < 1 || daysPerWeek > 7) return 'Days per week must be between 1 and 7.';
       if (minutesPerSession < 10 || minutesPerSession > 180)
         return 'Minutes per session must be between 10 and 180.';
-      if (!preferredTimes || !preferredTimes.length)
-        return 'Select at least one preferred time of day.';
+      // preferredTimes is set to default ['morning'] and not user-editable
     }
 
     return null;

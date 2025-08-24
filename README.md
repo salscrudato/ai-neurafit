@@ -9,18 +9,11 @@ Your AI-powered personal fitness trainer. Get personalized workouts that adapt t
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ 
+- Node.js 18+
 - Firebase CLI (`npm install -g firebase-tools`)
 
-### Development Setup
+### Development Setup (Recommended)
 
-#### Option 1: Quick Start (Recommended)
-```bash
-# Start both frontend and backend with one command
-npm start
-```
-
-#### Option 2: Manual Setup (Recommended for Development)
 ```bash
 # Terminal 1 - Backend (Firebase Emulators)
 cd functions
@@ -30,7 +23,7 @@ npm start
 npm run dev
 ```
 
-#### Option 3: Frontend Only
+### Frontend Only Development
 ```bash
 npm install
 npm run dev
@@ -47,11 +40,8 @@ npm run dev
 
 ```bash
 # Development
-npm start               # Start both frontend and backend together
 npm run dev             # Start frontend only (Vite dev server)
 npm run dev:backend     # Start backend only (from root)
-npm run emulators       # Start Firebase emulators only
-npm run functions:dev   # Start functions only
 
 # Manual Backend (recommended for development)
 cd functions && npm start  # Start all Firebase emulators

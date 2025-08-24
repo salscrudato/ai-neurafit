@@ -104,13 +104,8 @@ function listenToSystemTheme(cb: (isDark: boolean) => void) {
   const mq = window.matchMedia('(prefers-color-scheme: dark)');
   const handler = (e: MediaQueryListEvent) => cb(e.matches);
   mq.addEventListener?.('change', handler);
-  // Fallback older browsers:
-  // @ts-expect-error - legacy
-  mq.addListener?.(handler);
   return () => {
     mq.removeEventListener?.('change', handler);
-    // @ts-expect-error - legacy
-    mq.removeListener?.(handler);
   };
 }
 

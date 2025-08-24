@@ -1,4 +1,4 @@
-import React, { memo, useId, useMemo, useRef, useState } from 'react';
+import React, { memo, useId, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Button } from '../ui/Button';
 
@@ -124,47 +124,12 @@ export const OnboardingStep4: React.FC<OnboardingStep4Props> = memo(
       }
     };
 
-    const onCheckboxKeyDown = (
-      e: React.KeyboardEvent<HTMLButtonElement>,
-      refs: React.MutableRefObject<Array<HTMLButtonElement | null>>,
-      currentIndex: number,
-      onToggle: () => void
-    ) => {
-      switch (e.key) {
-        case 'ArrowRight':
-        case 'ArrowDown':
-          e.preventDefault();
-          moveFocus(refs, currentIndex + 1);
-          break;
-        case 'ArrowLeft':
-        case 'ArrowUp':
-          e.preventDefault();
-          moveFocus(refs, currentIndex - 1);
-          break;
-        case 'Home':
-          e.preventDefault();
-          moveFocus(refs, 0);
-          break;
-        case 'End':
-          e.preventDefault();
-          moveFocus(refs, refs.current.length - 1);
-          break;
-        case ' ':
-        case 'Enter':
-          e.preventDefault();
-          onToggle();
-          break;
-        default:
-          break;
-      }
-    };
+
 
     /* ------------------------------- Proceed ------------------------------ */
     const canProceed =
       !!daysSelected &&
-      !!minutesSelected &&
-      Array.isArray(timesSelected) &&
-      timesSelected.length > 0;
+      !!minutesSelected;
 
     const handleComplete = async () => {
       if (onComplete) {

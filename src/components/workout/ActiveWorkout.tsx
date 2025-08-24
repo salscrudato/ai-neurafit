@@ -59,6 +59,9 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
   const isLastExercise = currentExerciseIndex === totalExercises - 1;
   const isLastSet = currentSet === currentExercise.sets - 1;
 
+  // Handle both nested (exercise.exercise) and flat (exercise) structures
+  const exerciseData = currentExercise.exercise || currentExercise;
+
   // Motivational messages based on progress
   const getMotivationalMessage = () => {
     const messages = [
@@ -119,7 +122,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
     } else {
       // Exercise complete
       const completedExercise: CompletedExercise = {
-        exerciseId: currentExercise.exercise.id,
+        exerciseId: exerciseData.id || `exercise-${currentExerciseIndex}`,
         sets: updatedSets,
         skipped: false,
         completedAt: new Date(),
@@ -137,7 +140,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
 
   const handleSkipExercise = () => {
     const completedExercise: CompletedExercise = {
-      exerciseId: currentExercise.exercise.id,
+      exerciseId: exerciseData.id || `exercise-${currentExerciseIndex}`,
       sets: completedSets,
       skipped: true,
       completedAt: new Date(),
@@ -314,9 +317,9 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                       </div>
                       <div>
                         <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900">
-                          {currentExercise.exercise.name}
+                          {exerciseData.name || 'Exercise'}
                         </h2>
-                        <p className="text-neutral-600">{currentExercise.exercise.description}</p>
+                        <p className="text-neutral-600">{exerciseData.description || 'Complete this exercise with proper form.'}</p>
                       </div>
                     </div>
 
@@ -326,10 +329,10 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                       </Badge>
                       <Badge variant="secondary">
                         <FireIcon className="w-4 h-4 mr-1" />
-                        {currentExercise.exercise.difficulty}
+                        {exerciseData.difficulty || 'beginner'}
                       </Badge>
                       <Badge variant="accent">
-                        {currentExercise.exercise.targetMuscles.join(', ')}
+                        {(exerciseData.targetMuscles || []).join(', ') || 'Full Body'}
                       </Badge>
                     </div>
                   </div>
@@ -381,9 +384,9 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                     <div className="text-sm font-medium text-primary-700 mb-3">
                       {currentExercise.reps ? 'Target Reps' : 'Duration'}
                     </div>
-                    {currentExercise.exercise.formCues && (
+                    {(exerciseData.formCues || exerciseData.tips) && (
                       <div className="text-xs text-primary-600">
-                        💡 {currentExercise.exercise.formCues[0]}
+                        💡 {(exerciseData.formCues || exerciseData.tips)?.[0]}
                       </div>
                     )}
                   </div>
@@ -507,12 +510,16 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                       <div>
                         <h3 className="text-sm font-medium text-neutral-700 mb-1">Up Next</h3>
                         <p className="text-neutral-900 font-semibold">
-                          {session.workoutPlan.exercises[currentExerciseIndex + 1].exercise.name}
+                          {(() => {
+                            const nextExercise = session.workoutPlan.exercises[currentExerciseIndex + 1];
+                            const nextExerciseData = nextExercise?.exercise || nextExercise;
+                            return nextExerciseData?.name || 'Next Exercise';
+                          })()}
                         </p>
                       </div>
                     </div>
                     <Badge variant="secondary" size="sm">
-                      {session.workoutPlan.exercises[currentExerciseIndex + 1].sets} sets
+                      {session.workoutPlan.exercises[currentExerciseIndex + 1]?.sets || 1} sets
                     </Badge>
                   </div>
                 </Card>
@@ -551,7 +558,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
 
       {/* Exercise Instructions Modal */}
       <ExerciseInstructions
-        exercise={currentExercise.exercise}
+        exercise={exerciseData}
         isOpen={showInstructions}
         onClose={() => setShowInstructions(false)}
       />

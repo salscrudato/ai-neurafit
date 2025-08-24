@@ -23,9 +23,6 @@ ai-neurafit/
 ├── firestore.indexes.json             # Firestore database indexes
 ├── .firebaserc                        # Firebase project aliases
 ├── index.html                         # HTML entry point
-├── start-dev.sh                       # Development startup script
-├── extract-frontend-code.sh           # Frontend code extraction script
-├── extract-backend-code.sh            # Backend code extraction script
 ├── public/                            # Static assets
 │   └── neurafit-icon.svg              # Application icon
 ├── dist/                              # Built frontend (auto-generated)
@@ -137,16 +134,11 @@ functions/
 - **Firebase Emulators** - Local development environment
 - **Vite HMR** - Hot module replacement
 
-## Usage
+## Development
 
-To extract all code into documentation files, run:
-
-```bash
-# Extract all frontend code
-./extract-frontend-code.sh
-
-# Extract all backend code  
-./extract-backend-code.sh
-```
-
-This will create `frontend-code-complete.md` and `backend-code-complete.md` with all source code and descriptions.
+This is a clean, optimized codebase structure focused on:
+- **Modern React/Vite frontend** with TypeScript
+- **Firebase Functions backend** with TypeScript
+- **Clean separation** of concerns
+- **Optimized dependencies** with no unused packages
+- **Streamlined scripts** for efficient development

@@ -4,7 +4,7 @@ This guide explains how to set up and run the AI NeuraFit application for local 
 
 ## Quick Start
 
-### Option 1: Separate Commands (Recommended)
+### Separate Commands (Recommended)
 
 **Terminal 1 - Backend (Firebase Emulators):**
 ```bash
@@ -16,12 +16,6 @@ npm start
 ```bash
 npm run dev
 ```
-
-### Option 2: Single Command
-```bash
-npm start
-```
-This runs both frontend and backend together using concurrently.
 
 ## Development Workflow
 

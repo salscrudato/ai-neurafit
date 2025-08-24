@@ -152,19 +152,29 @@ export const WorkoutSelector: React.FC<WorkoutSelectorProps> = ({
         <div className="mb-8">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Exercises</h3>
           <div className="space-y-3">
-            {currentWorkout.exercises.slice(0, 5).map((exercise, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <h4 className="font-medium text-gray-900">{exercise.exercise.name}</h4>
-                  <p className="text-sm text-gray-600">
-                    {exercise.sets} sets × {exercise.reps || exercise.duration + 's'}
-                  </p>
+            {currentWorkout.exercises.slice(0, 5).map((exercise, index) => {
+              // Handle both nested (exercise.exercise) and flat (exercise) structures
+              const exerciseData = exercise.exercise || exercise;
+              const exerciseName = exerciseData?.name || 'Unknown Exercise';
+              const sets = exercise.sets || exerciseData?.sets || 1;
+              const reps = exercise.reps || exerciseData?.reps;
+              const duration = exercise.duration || exerciseData?.duration;
+              const restTime = exercise.restTime || exerciseData?.restTime || 60;
+
+              return (
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <h4 className="font-medium text-gray-900">{exerciseName}</h4>
+                    <p className="text-sm text-gray-600">
+                      {sets} sets × {reps || (duration ? duration + 's' : '10 reps')}
+                    </p>
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {restTime}s rest
+                  </div>
                 </div>
-                <div className="text-sm text-gray-500">
-                  {exercise.restTime}s rest
-                </div>
-              </div>
-            ))}
+              );
+            })}
             
             {currentWorkout.exercises.length > 5 && (
               <div className="text-center py-2 text-gray-500 text-sm">

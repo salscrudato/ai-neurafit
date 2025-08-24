@@ -15,7 +15,6 @@ import type {
   Equipment,
   FitnessGoal,
   FitnessLevel,
-  UserProfile,
   WorkoutType,
 } from '../types';
 
