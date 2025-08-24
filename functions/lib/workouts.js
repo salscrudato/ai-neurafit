@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateAdaptiveWorkout = exports.generateWorkout = void 0;
+exports.completeWorkoutSession = exports.generateAdaptiveWorkout = exports.generateWorkout = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const firebase_functions_1 = require("firebase-functions");
 const openai_1 = __importDefault(require("openai"));
@@ -249,6 +249,39 @@ async function callModelJSON(messages) {
             throw new Error('Empty model response (fallback).');
         return { content, usage };
     }
+}
+/* -----------------------------------------------------------------------------
+ * AI Response Transformation
+ * ---------------------------------------------------------------------------*/
+function transformAIResponse(data) {
+    if (!data || typeof data !== 'object')
+        return data;
+    // Transform exercises to match our schema
+    if (data.exercises && Array.isArray(data.exercises)) {
+        data.exercises = data.exercises.map((exercise) => {
+            const transformed = Object.assign({}, exercise);
+            // Convert string instructions to array
+            if (typeof transformed.instructions === 'string') {
+                transformed.instructions = [transformed.instructions];
+            }
+            // Add missing required fields with defaults
+            if (!transformed.description) {
+                transformed.description = `${transformed.name} exercise for building strength and muscle.`;
+            }
+            if (!transformed.difficulty) {
+                transformed.difficulty = data.difficulty || 'beginner';
+            }
+            if (!transformed.tips || !Array.isArray(transformed.tips)) {
+                transformed.tips = [
+                    'Focus on proper form',
+                    'Control the movement',
+                    'Breathe consistently'
+                ];
+            }
+            return transformed;
+        });
+    }
+    return data;
 }
 /* -----------------------------------------------------------------------------
  * Prompt builders
@@ -536,13 +569,15 @@ exports.generateWorkout = (0, https_1.onCall)({
         });
         throw new https_1.HttpsError('internal', 'Failed to parse AI response as JSON.');
     }
-    // Strategy 3: Validate against schema with detailed error reporting
+    // Strategy 3: Transform AI response to match our schema
+    workoutData = transformAIResponse(workoutData);
+    // Strategy 4: Validate against schema with detailed error reporting
     const parsed = WorkoutPlanSchema.safeParse(workoutData);
     if (!parsed.success) {
         const missingFields = parsed.error.issues
             .filter(issue => issue.code === 'invalid_type' && issue.received === 'undefined')
             .map(issue => issue.path.join('.'));
-        firebase_functions_1.logger.error('Schema validation failed', {
+        firebase_functions_1.logger.error('Schema validation failed after transformation', {
             issues: parsed.error.issues.slice(0, 5), // Limit to first 5 issues
             receivedKeys: Object.keys(workoutData || {}),
             missingFields,
@@ -588,7 +623,7 @@ exports.generateWorkout = (0, https_1.onCall)({
         digest: (_f = (_e = profile.system) === null || _e === void 0 ? void 0 : _e.profileDigest) !== null && _f !== void 0 ? _f : null,
     });
     // Persist
-    const doc = Object.assign(Object.assign({}, plan), { userId: uid, createdAt: shared_1.admin.firestore.FieldValue.serverTimestamp(), source: 'ai', model: OPENAI_MODEL, usage: usage ? Object.assign({}, usage) : undefined, profileDigest: (_h = (_g = profile.system) === null || _g === void 0 ? void 0 : _g.profileDigest) !== null && _h !== void 0 ? _h : null, dedupeKey, status: 'ready' });
+    const doc = Object.assign(Object.assign({}, plan), { userId: uid, createdAt: firestore_1.FieldValue.serverTimestamp(), source: 'ai', model: OPENAI_MODEL, usage: usage ? Object.assign({}, usage) : undefined, profileDigest: (_h = (_g = profile.system) === null || _g === void 0 ? void 0 : _g.profileDigest) !== null && _h !== void 0 ? _h : null, dedupeKey, status: 'ready' });
     // Create a new doc but allow clients to search by dedupeKey to reuse results
     const ref = await shared_1.db.collection('workoutPlans').add(doc);
     firebase_functions_1.logger.info('Workout generated', { uid, planId: ref.id, model: OPENAI_MODEL });
@@ -674,7 +709,7 @@ exports.generateAdaptiveWorkout = (0, https_1.onCall)({
         level: nextLevel,
         equip: plan.equipment,
     });
-    const ref = await shared_1.db.collection('workoutPlans').add(Object.assign(Object.assign({}, plan), { userId: uid, createdAt: shared_1.admin.firestore.FieldValue.serverTimestamp(), source: 'ai-adaptive', model: OPENAI_MODEL, usage: usage ? Object.assign({}, usage) : undefined, profileDigest: (_h = (_g = profile.system) === null || _g === void 0 ? void 0 : _g.profileDigest) !== null && _h !== void 0 ? _h : null, dedupeKey, status: 'ready', adaptedFrom: input.previousWorkoutId }));
+    const ref = await shared_1.db.collection('workoutPlans').add(Object.assign(Object.assign({}, plan), { userId: uid, createdAt: firestore_1.FieldValue.serverTimestamp(), source: 'ai-adaptive', model: OPENAI_MODEL, usage: usage ? Object.assign({}, usage) : undefined, profileDigest: (_h = (_g = profile.system) === null || _g === void 0 ? void 0 : _g.profileDigest) !== null && _h !== void 0 ? _h : null, dedupeKey, status: 'ready', adaptedFrom: input.previousWorkoutId }));
     firebase_functions_1.logger.info('Adaptive workout generated', { uid, planId: ref.id, model: OPENAI_MODEL });
     return {
         success: true,
@@ -685,5 +720,62 @@ exports.generateAdaptiveWorkout = (0, https_1.onCall)({
         },
         dedupeKey,
     };
+});
+/* -----------------------------------------------------------------------------
+ * Callable: completeWorkoutSession
+ * ---------------------------------------------------------------------------*/
+const CompleteWorkoutSessionSchema = zod_1.z.object({
+    sessionId: zod_1.z.string().min(1).max(128),
+    completedExercises: zod_1.z.array(zod_1.z.object({
+        exerciseId: zod_1.z.string().min(1).max(128),
+        sets: zod_1.z.array(zod_1.z.object({
+            reps: zod_1.z.number().int().min(0).max(1000).optional(),
+            weight: zod_1.z.number().min(0).max(10000).optional(),
+            duration: zod_1.z.number().int().min(0).max(7200).optional(),
+            restTime: zod_1.z.number().int().min(0).max(3600).optional(),
+            completed: zod_1.z.boolean(),
+        })).max(50),
+        skipped: zod_1.z.boolean().default(false),
+        notes: zod_1.z.string().max(500).optional(),
+    })).max(100),
+    rating: zod_1.z.number().int().min(1).max(5).optional(),
+    feedback: zod_1.z.string().max(1000).optional(),
+}).strict();
+exports.completeWorkoutSession = (0, https_1.onCall)({
+    region: 'us-central1',
+    memory: '256MiB',
+    timeoutSeconds: 60,
+    enforceAppCheck: false, // Disabled for development - enable in production
+    cors: true, // Enable CORS
+}, async (req) => {
+    var _a, _b;
+    const uid = (_a = req.auth) === null || _a === void 0 ? void 0 : _a.uid;
+    if (!uid)
+        throw new https_1.HttpsError('unauthenticated', 'Authentication required.');
+    const input = CompleteWorkoutSessionSchema.parse((_b = req.data) !== null && _b !== void 0 ? _b : {});
+    firebase_functions_1.logger.info('Completing workout session', {
+        uid,
+        sessionId: input.sessionId,
+        exerciseCount: input.completedExercises.length,
+        rating: input.rating
+    });
+    try {
+        // Save the completed workout session to Firestore
+        const sessionDoc = {
+            userId: uid,
+            sessionId: input.sessionId,
+            completedExercises: input.completedExercises,
+            rating: input.rating,
+            feedback: input.feedback,
+            completedAt: firestore_1.FieldValue.serverTimestamp(),
+        };
+        await shared_1.db.collection('workoutSessions').add(sessionDoc);
+        firebase_functions_1.logger.info('Workout session saved', { sessionId: input.sessionId, uid });
+        return { success: true };
+    }
+    catch (err) {
+        firebase_functions_1.logger.error('completeWorkoutSession failed', { error: err.message, uid, sessionId: input.sessionId });
+        throw new https_1.HttpsError('internal', 'Failed to save workout session.');
+    }
 });
 //# sourceMappingURL=workouts.js.map

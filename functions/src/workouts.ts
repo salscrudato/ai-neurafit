@@ -14,7 +14,7 @@ import OpenAI from 'openai';
 import { z } from 'zod';
 import { createHash } from 'crypto';
 import { db, admin } from './shared';
-import { Timestamp } from 'firebase-admin/firestore';
+import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 
 /* -----------------------------------------------------------------------------
  * OpenAI client (lazy)
@@ -281,6 +281,46 @@ async function callModelJSON(messages: OpenAI.Chat.Completions.ChatCompletionMes
     if (!content) throw new Error('Empty model response (fallback).');
     return { content, usage };
   }
+}
+
+/* -----------------------------------------------------------------------------
+ * AI Response Transformation
+ * ---------------------------------------------------------------------------*/
+function transformAIResponse(data: any): any {
+  if (!data || typeof data !== 'object') return data;
+
+  // Transform exercises to match our schema
+  if (data.exercises && Array.isArray(data.exercises)) {
+    data.exercises = data.exercises.map((exercise: any) => {
+      const transformed = { ...exercise };
+
+      // Convert string instructions to array
+      if (typeof transformed.instructions === 'string') {
+        transformed.instructions = [transformed.instructions];
+      }
+
+      // Add missing required fields with defaults
+      if (!transformed.description) {
+        transformed.description = `${transformed.name} exercise for building strength and muscle.`;
+      }
+
+      if (!transformed.difficulty) {
+        transformed.difficulty = data.difficulty || 'beginner';
+      }
+
+      if (!transformed.tips || !Array.isArray(transformed.tips)) {
+        transformed.tips = [
+          'Focus on proper form',
+          'Control the movement',
+          'Breathe consistently'
+        ];
+      }
+
+      return transformed;
+    });
+  }
+
+  return data;
 }
 
 /* -----------------------------------------------------------------------------
@@ -595,14 +635,17 @@ export const generateWorkout = onCall(
       throw new HttpsError('internal', 'Failed to parse AI response as JSON.');
     }
 
-    // Strategy 3: Validate against schema with detailed error reporting
+    // Strategy 3: Transform AI response to match our schema
+    workoutData = transformAIResponse(workoutData);
+
+    // Strategy 4: Validate against schema with detailed error reporting
     const parsed = WorkoutPlanSchema.safeParse(workoutData);
     if (!parsed.success) {
       const missingFields = parsed.error.issues
         .filter(issue => issue.code === 'invalid_type' && issue.received === 'undefined')
         .map(issue => issue.path.join('.'));
 
-      logger.error('Schema validation failed', {
+      logger.error('Schema validation failed after transformation', {
         issues: parsed.error.issues.slice(0, 5), // Limit to first 5 issues
         receivedKeys: Object.keys(workoutData || {}),
         missingFields,
@@ -666,7 +709,7 @@ export const generateWorkout = onCall(
     const doc = {
       ...plan,
       userId: uid,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
       source: 'ai',
       model: OPENAI_MODEL,
       usage: usage ? { ...usage } : undefined,
@@ -773,7 +816,7 @@ export const generateAdaptiveWorkout = onCall(
     const ref = await db.collection('workoutPlans').add({
       ...plan,
       userId: uid,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
       source: 'ai-adaptive',
       model: OPENAI_MODEL,
       usage: usage ? { ...usage } : undefined,
@@ -795,4 +838,67 @@ export const generateAdaptiveWorkout = onCall(
       dedupeKey,
     };
   },
+);
+
+/* -----------------------------------------------------------------------------
+ * Callable: completeWorkoutSession
+ * ---------------------------------------------------------------------------*/
+const CompleteWorkoutSessionSchema = z.object({
+  sessionId: z.string().min(1).max(128),
+  completedExercises: z.array(z.object({
+    exerciseId: z.string().min(1).max(128),
+    sets: z.array(z.object({
+      reps: z.number().int().min(0).max(1000).optional(),
+      weight: z.number().min(0).max(10000).optional(),
+      duration: z.number().int().min(0).max(7200).optional(),
+      restTime: z.number().int().min(0).max(3600).optional(),
+      completed: z.boolean(),
+    })).max(50),
+    skipped: z.boolean().default(false),
+    notes: z.string().max(500).optional(),
+  })).max(100),
+  rating: z.number().int().min(1).max(5).optional(),
+  feedback: z.string().max(1000).optional(),
+}).strict();
+
+export const completeWorkoutSession = onCall(
+  {
+    region: 'us-central1',
+    memory: '256MiB',
+    timeoutSeconds: 60,
+    enforceAppCheck: false, // Disabled for development - enable in production
+    cors: true, // Enable CORS
+  },
+  async (req) => {
+    const uid = req.auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'Authentication required.');
+
+    const input = CompleteWorkoutSessionSchema.parse(req.data ?? {});
+    logger.info('Completing workout session', {
+      uid,
+      sessionId: input.sessionId,
+      exerciseCount: input.completedExercises.length,
+      rating: input.rating
+    });
+
+    try {
+      // Save the completed workout session to Firestore
+      const sessionDoc = {
+        userId: uid,
+        sessionId: input.sessionId,
+        completedExercises: input.completedExercises,
+        rating: input.rating,
+        feedback: input.feedback,
+        completedAt: FieldValue.serverTimestamp(),
+      };
+
+      await db.collection('workoutSessions').add(sessionDoc);
+      logger.info('Workout session saved', { sessionId: input.sessionId, uid });
+
+      return { success: true };
+    } catch (err: any) {
+      logger.error('completeWorkoutSession failed', { error: err.message, uid, sessionId: input.sessionId });
+      throw new HttpsError('internal', 'Failed to save workout session.');
+    }
+  }
 );
